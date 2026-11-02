@@ -30,6 +30,9 @@ public class PlayPolicyTest {
         } else {
             assertTrue(permissions.contains("android.permission.RECEIVE_SMS"));
             assertTrue(permissions.contains("android.permission.SEND_SMS"));
+            assertTrue(permissions.contains("android.permission.READ_SMS"));
+            assertTrue(permissions.contains("android.permission.RECEIVE_MMS"));
+            assertTrue(permissions.contains("android.permission.RECEIVE_WAP_PUSH"));
         }
     }
 
