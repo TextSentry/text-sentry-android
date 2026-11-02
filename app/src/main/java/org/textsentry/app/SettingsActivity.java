@@ -77,6 +77,18 @@ public final class SettingsActivity extends Activity {
                         }).setNegativeButton("Cancel", null).show());
         }
 
+        if ("sideload".equals(BuildConfig.FLAVOR)) {
+            LinearLayout monitoring = UiKit.card(this, root, 0xFFFFFFFF);
+            UiKit.heading(this, monitoring, "Message monitoring");
+            UiKit.chip(this, monitoring, settings.monitoring()
+                    ? "Monitoring enabled" : "Off until you enable it");
+            UiKit.description(this, monitoring,
+                    "Start preview from Home when ready. Android will request incoming SMS "
+                            + "access when needed. Automatic replies stay off.");
+            UiKit.button(this, monitoring, "Set up monitoring", true, () ->
+                    startActivity(new Intent(this, MainActivity.class)));
+        }
+
         LinearLayout rules = UiKit.card(this, root, 0xFFFFFFFF);
         UiKit.heading(this, rules, "Filter categories");
         voteCategory = addCategory(rules, "Voting reminders", "", MessageCategories.VOTE);
