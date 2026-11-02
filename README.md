@@ -4,6 +4,10 @@
 
 TextSentry is an Android message assistant powered by **TypeSafe Jev System One**. New users sign in with Google to use a monthly $1-capped OpenRouter key automatically; or they can skip registration and bring their own TypeSafe API key (BYOK). Both modes use the same single Jev yes/no decision, selected message categories and 50–100% threshold (default **95%**). The only automated reply is the fixed **STOP**.
 
+## License
+
+TextSentry Android source code is **source-available for noncommercial use** under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may use, study, modify, and redistribute the code for permitted noncommercial purposes, including personal and hobby use. **Commercial use requires a separate written license from the applicable copyright holder.** This is not an OSI-approved open-source license. Third-party components retain their own licenses; this grant does not grant TextSentry trademark rights or imply endorsement.
+
 ## TextSentry account (Google sign-in)
 
 The Play and sideload editions now offer Google sign-in / sign-up through AWS Cognito. First-time Google users create an account and returning users sign in through the same browser-based authorization-code + S256 PKCE flow. The app loads public Cognito configuration from `https://api.textsentry.org/v1/auth/config`, then keeps Cognito access/ID/refresh tokens encrypted locally with a separate Android Keystore AES-GCM key. Sign-out erases the local session, as does Delete all app data. After sign-in (or after reopening the Account screen with a saved session), the app refreshes Cognito tokens if necessary and retrieves the active-month OpenRouter key through `GET https://api.textsentry.org/v1/key`. The key remains **in process RAM only**; the Account screen reports readiness without displaying or storing the key. A Refresh managed key action is available; sign-out and data deletion clear memory.
