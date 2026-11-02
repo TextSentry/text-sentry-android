@@ -23,6 +23,12 @@ public final class SmsWorker extends Worker {
         String queuedGeneration = getInputData().getString("generation");
         if (!SetupGate.canEnterApp(context) || !settings.monitoring()
                 || !settings.generation().equals(queuedGeneration)) return Result.success();
+        String source = "mms".equals(getInputData().getString("source")) ? "mms" : "sms";
+        boolean replyAllowed = !"mms".equals(source)
+                || getInputData().getBoolean("reply_allowed", false);
+        if ("mms".equals(source) && (!settings.mmsEnabled()
+                || context.checkSelfPermission(Manifest.permission.READ_SMS)
+                    != PackageManager.PERMISSION_GRANTED)) return Result.success();
         String sender = getInputData().getString("sender");
         String message = getInputData().getString("sms");
         if (!MessagePolicy.eligible(sender, message)) {
@@ -47,25 +53,29 @@ public final class SmsWorker extends Worker {
 
             SystemOneClient.Evaluation evaluation = AnalysisAccess.evaluate(context,
                     combinedInstructions, message, settings.confidence() / 100.0,
-                    DeveloperMode.traceSink(context, "sms"));
-            if (!settings.monitoring() || !settings.generation().equals(queuedGeneration)) {
+                    DeveloperMode.traceSink(context, source));
+            if (!settings.monitoring() || !settings.generation().equals(queuedGeneration)
+                    || ("mms".equals(source) && !settings.mmsEnabled())) {
                 return Result.success();
             }
             AiDecision decision = evaluation.decision;
             HistoryStore history = new HistoryStore(context);
             if (!decision.shouldReply) {
-                history.add(sender, message, evaluation.confidence, "", "no_reply", "sms");
+                history.add(sender, message, evaluation.confidence, "", "no_reply", source);
                 settings.addHistory("AI: no reply");
+            } else if (!replyAllowed) {
+                history.add(sender, message, evaluation.confidence, "", "blocked", source);
+                settings.addHistory("Group MMS: automatic STOP blocked");
             } else if (!settings.autoSend()) {
-                history.add(sender, message, evaluation.confidence, decision.reply, "preview", "sms");
+                history.add(sender, message, evaluation.confidence, decision.reply, "preview", source);
                 settings.addHistory("Preview only: " + decision.reply);
             } else if (context.checkSelfPermission(Manifest.permission.SEND_SMS)
                     != PackageManager.PERMISSION_GRANTED) {
-                history.add(sender, message, evaluation.confidence, decision.reply, "blocked", "sms");
+                history.add(sender, message, evaluation.confidence, decision.reply, "blocked", source);
                 settings.addHistory("Blocked: send permission/consent missing");
             } else {
                 if (!ledger.reserveSend(sender, System.currentTimeMillis())) {
-                    history.add(sender, message, evaluation.confidence, decision.reply, "blocked", "sms");
+                    history.add(sender, message, evaluation.confidence, decision.reply, "blocked", source);
                     settings.addHistory("Blocked: recipient daily reply limit");
                     return Result.success();
                 }
@@ -73,7 +83,7 @@ public final class SmsWorker extends Worker {
                 if (manager == null) throw new IllegalStateException("SMS service unavailable");
                 // Audit before invoking carrier APIs. A queued send is NOT a confirmed send.
                 String historyId = history.add(sender, message, evaluation.confidence,
-                        decision.reply, "submitting", "sms");
+                        decision.reply, "submitting", source);
                 Intent sentCallback = new Intent(context, SmsSentReceiver.class)
                         .setAction(SmsSentReceiver.ACTION)
                         .setData(Uri.parse("textsentry://sent/" + historyId));
