@@ -77,10 +77,10 @@ jobs:
       - name: Check sideload-only production checkout link
         run: |
           grep -F 'https://pay.rev.cat/mimrlvpobvqnjikw/' app/src/main/java/org/textsentry/app/WebCheckout.java
-          grep -F 'Review plans and subscribe' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'Allow restricted settings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'Continue to battery settings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'shouldReturnHome' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'Subscribe or restore' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SetupFlow.canCompleteSetup' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'openSettings();' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'Subscribe to TextSentry' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'BuildConfig.WEB_CHECKOUT_ENABLED' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'android:path="/return"' app/src/sideload/AndroidManifest.xml
