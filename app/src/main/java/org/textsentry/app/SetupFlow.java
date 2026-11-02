@@ -68,7 +68,7 @@ final class SetupFlow {
      * first-run settings. The Play flavor has no hosted checkout today. */
     static boolean readyForSettings(boolean googleSignedIn, boolean hasOwnKey,
                                     boolean sideloadBuild, boolean subscriptionVerified) {
-        return hasOwnKey || (googleSignedIn && (!sideloadBuild || subscriptionVerified));
+        return googleSignedIn ? (!sideloadBuild || subscriptionVerified) : hasOwnKey;
     }
 
     /** Clear a prior account's handoff before switching/signing in again. */
@@ -81,7 +81,7 @@ final class SetupFlow {
     /** A one-time required managed-account checkout step, separate from the saved permission stage. */
     static boolean shouldPromptSubscription(boolean googleSignedIn, boolean hasOwnKey,
                                             boolean sideloadBuild, boolean promptSeen) {
-        return sideloadBuild && googleSignedIn && !hasOwnKey && !promptSeen;
+        return sideloadBuild && googleSignedIn && !promptSeen;
     }
 
     /** An existing completed installation only revisits the wizard when
