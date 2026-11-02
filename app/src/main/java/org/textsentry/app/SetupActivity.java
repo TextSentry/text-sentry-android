@@ -16,10 +16,14 @@ import android.widget.TextView;
 public final class SetupActivity extends Activity {
     private boolean navigating;
     private boolean showingOwnKey;
+    private boolean subscriptionOpened;
 
     @Override public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
-        if (savedState != null) showingOwnKey = savedState.getBoolean("show_own_key", false);
+        if (savedState != null) {
+            showingOwnKey = savedState.getBoolean("show_own_key", false);
+            subscriptionOpened = savedState.getBoolean("subscription_opened", false);
+        }
         display();
     }
 
@@ -30,6 +34,7 @@ public final class SetupActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putBoolean("show_own_key", showingOwnKey);
+        out.putBoolean("subscription_opened", subscriptionOpened);
         super.onSaveInstanceState(out);
     }
 
@@ -155,5 +160,10 @@ public final class SetupActivity extends Activity {
         UiKit.description(this, root,
                 "Secure checkout opens in your browser. We'll verify your subscription "
                         + "and take you straight to Settings.");
+        // Enter checkout directly after login; Back leaves one retry action.
+        if (!subscriptionOpened) {
+            subscriptionOpened = true;
+            startActivity(SubscriptionOnboarding.continueSetupIntent(this));
+        }
     }
 }
