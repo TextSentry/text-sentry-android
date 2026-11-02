@@ -97,6 +97,30 @@ public class GuidedSetupTest {
         }
     }
 
+    @Test public void paidGoogleOnboardingMustVerifyBeforeOpeningSettings() {
+        assertFalse(SetupFlow.canCompleteSetup(true, true, true));
+        assertTrue(SetupFlow.canCompleteSetup(true, true, false));
+        assertTrue(SetupFlow.canCompleteSetup(true, false, true));
+        assertFalse(SetupFlow.canCompleteSetup(false, false, false));
+    }
+
+    @Test public void completingSetupDoesNotEnableMonitoringOrReplies() throws Exception {
+        Context context = app();
+        SetupFlow.reset(context);
+        new Settings(context).pause();
+        new KeyVault(context).save("synthetic-no-monitoring-test");
+        try {
+            assertTrue(SetupFlow.canCompleteSetup(SetupGate.hasAccess(context), false, false));
+            SetupFlow.complete(context);
+            assertTrue(SetupGate.canEnterApp(context));
+            assertFalse(new Settings(context).monitoring());
+            assertFalse(new Settings(context).autoSend());
+        } finally {
+            new KeyVault(context).clear();
+            SetupFlow.reset(context);
+        }
+    }
+
     @Test public void deletionClearsCompletedSetup() throws Exception {
         Context context = app();
         new KeyVault(context).save("synthetic-reset-test");
