@@ -30,15 +30,19 @@ public class SmsPermissionWizardTest {
             activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
                     new Intent(context, SetupActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            View root = activity.getWindow().getDecorView();
-            assertTrue(contains(root, "Activate TextSentry."));
-            assertFalse(contains(root, "Continue to SMS permissions"));
-            assertFalse(contains(root, "Continue to battery settings"));
-            assertFalse(contains(root, "Continue to SMS permissions without a key"));
             assertFalse(SetupFlow.isComplete(context));
-            // Checkout builds have a single action; disabled-checkout builds
-            // explain the blocker without providing a free managed-key bypass.
-            assertEquals(BuildConfig.WEB_CHECKOUT_ENABLED ? 1 : 0, buttonCount(root));
+            if (BuildConfig.WEB_CHECKOUT_ENABLED) {
+                // Checkout-enabled builds go directly to Account, without
+                // showing an additional subscription-introduction screen.
+                assertTrue(SetupFlow.subscriptionHandoffPending(context));
+            } else {
+                View root = activity.getWindow().getDecorView();
+                assertTrue(contains(root, "Activate TextSentry."));
+                assertFalse(contains(root, "Continue to SMS permissions"));
+                assertFalse(contains(root, "Continue to battery settings"));
+                assertFalse(contains(root, "Continue to SMS permissions without a key"));
+                assertEquals(0, buttonCount(root));
+            }
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
             new AuthSessionStore(context).clear();
