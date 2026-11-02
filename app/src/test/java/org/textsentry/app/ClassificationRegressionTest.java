@@ -30,7 +30,7 @@ public class ClassificationRegressionTest {
             String instructions = question.getString("instructions");
             assertFalse("SMS must not be embedded in classifier instructions",
                     instructions.contains(sms));
-            assertTrue(instructions.contains("owner rule"));
+            assertTrue(instructions.contains("owner's rule"));
             return new JSONObject().put("model", "jev-latest")
                     .put("answers", new JSONObject().put("reply",
                             new JSONObject().put("type", "noul").put("noul", 0.97)))
