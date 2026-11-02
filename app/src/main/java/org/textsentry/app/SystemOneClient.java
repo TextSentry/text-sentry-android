@@ -57,12 +57,19 @@ public final class SystemOneClient {
             throw new IllegalArgumentException("Request too long");
         }
         JSONObject criteria = new JSONObject()
-                .put("true", "The message unmistakably matches the owner's rule without assumptions")
-                .put("false", "Personal, security, scam, transactional, ambiguous or unrelated message");
+                .put("true", "The SMS clearly has the persuasive or promotional purpose "
+                        + "defined by an owner's selected category, not merely a STOP footer or URL")
+                .put("false", "Routine pharmacy, daycare, school, appointment, delivery, banking, "
+                        + "billing, utility or neutral official election notice; personal, "
+                        + "security, emergency, scam, ambiguous or unrelated message");
         JSONObject question = new JSONObject()
                 .put("type", "noul")
-                .put("instructions", "Does this message unambiguously meet the owner's rules? "
-                        + "If unsure, answer NO. Apply the following owner rule: " + userRule)
+                .put("instructions", "Classify the SMS by its communication purpose, not by "
+                        + "whether the recipient opted in or whether STOP should be sent. "
+                        + "An explicit get-out-the-vote appeal can include official voting "
+                        + "links or logistics. A STOP footer alone proves nothing. "
+                        + "If the meaning is unclear, answer NO. Apply the owner's rule: "
+                        + userRule)
                 .put("criteria", criteria);
         JSONObject request = new JSONObject()
                 .put("model", expectedModel)

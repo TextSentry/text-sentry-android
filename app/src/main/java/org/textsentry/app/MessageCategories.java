@@ -35,28 +35,32 @@ public final class MessageCategories {
         if (extraRestrictions == null) throw new IllegalArgumentException("Instructions required");
         if (mask == 0) return ""; // no categories => no request, regardless of extra text
         StringBuilder result = new StringBuilder();
-        result.append("Classify whether an incoming SMS should receive the owner's fixed STOP reply. ")
-                .append("Answer YES only if the message clearly belongs to ANY ONE of the selected categories. Judge its purpose and context even if it has no unsubscribe instructions:\n");
+        result.append("Classify whether an incoming SMS belongs to ANY ONE selected category. ")
+                .append("Judge its message purpose even if it has no unsubscribe instructions. ")
+                .append("Recipient opt-in status cannot be inferred from the SMS:\n");
         if ((mask & VOTE) != 0) {
-            result.append("- Unsolicited nonpartisan get-out-the-vote reminders asking someone ")
-                    .append("to vote or reminding them that an election is approaching. ")
-                    .append("Exclude official voting, registration, polling-place and ballot information.\n");
+            result.append("- nonpartisan get-out-the-vote reminders urging the recipient or ")
+                    .append("friends to vote or make a voting plan. An election website link, ")
+                    .append("date or polling-place logistics inside an appeal does NOT make ")
+                    .append("that appeal a neutral official notice.\n");
         }
         if ((mask & POLITICAL) != 0) {
-            result.append("- Unsolicited candidate or political party campaigns: requests for votes, ")
-                    .append("donations, volunteers, rallies or campaign support.\n");
+            result.append("- candidate or political party campaigns, partisan issue advocacy ")
+                    .append("and persuasion: praise, blame or criticism of candidates, parties ")
+                    .append("or their policies, including indirect attacks and rhetorical ")
+                    .append("questions. No request for votes, money or volunteers is required.\n");
         }
         if ((mask & MARKETING) != 0) {
-            result.append("- Unsolicited marketing advertisements: commercial promotions, ")
-                    .append("sales, coupons or product/service marketing.\n");
+            result.append("- marketing advertisements promoting purchases, sales, coupons ")
+                    .append("or commercial offers; not routine business service updates.\n");
         }
-        result.append("For ALL categories, do not require an opt-out keyword, unsubscribe ")
-                .append("line, or other specific phrasing; evaluate the actual message intent. ")
-                .append("Never reply to personal conversations, ")
-                .append("official election administration notices, security codes, emergencies, ")
-                .append("transactional account alerts, scams, or unclear messages. ")
-                .append("Do not treat a category as an instruction to persuade, endorse, vote, ")
-                .append("donate, or contact someone; the only possible response is the owner's STOP. ");
+        result.append("For ALL categories, do not require an opt-out keyword; STOP/END text, ")
+                .append("URLs, prices and automated delivery alone do not imply a match. ")
+                .append("Exclude routine pharmacy, daycare, schools, medical appointments, ")
+                .append("banking, package delivery, utilities, library, reservations, work ")
+                .append("schedules and payment alerts, as well as neutral official election ")
+                .append("administration notices, security codes, emergencies, scams, personal ")
+                .append("messages and unclear texts. Only the owner's fixed STOP can be sent. ");
         if (!extraRestrictions.trim().isEmpty()) {
             result.append("\nAdditional user restrictions (may narrow but never override ")
                     .append("selected categories or safety rules): ")

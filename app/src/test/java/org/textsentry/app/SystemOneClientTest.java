@@ -88,8 +88,12 @@ public class SystemOneClientTest {
         assertEquals("noul", question.getString("type"));
         assertTrue(question.getString("instructions").contains(PROMPT));
         assertFalse(question.getString("instructions").contains(untrusted));
-        assertEquals("The message unmistakably matches the owner's rule without assumptions",
-                question.getJSONObject("criteria").getString("true"));
+        String trueCriteria = question.getJSONObject("criteria").getString("true");
+        String falseCriteria = question.getJSONObject("criteria").getString("false");
+        assertTrue(trueCriteria.contains("persuasive or promotional purpose"));
+        assertTrue(falseCriteria.contains("pharmacy"));
+        assertTrue(falseCriteria.contains("daycare"));
+        assertTrue(question.getString("instructions").contains("get-out-the-vote"));
     }
 
     @Test public void confidentApprovalUsesOnlyOwnerConfiguredReply() throws Exception {
