@@ -61,7 +61,9 @@ public final class SetupActivity extends Activity {
                 renderSubscription();
             }
         } else {
-            // No monitoring or SMS replies are enabled by finishing onboarding.
+            // First run starts paused, regardless of any stale saved automation state.
+            // Existing installations keep their explicit monitoring preference.
+            if (!SetupFlow.isComplete(this)) new Settings(this).pause();
             SetupFlow.complete(this);
             // Keep an incoming Play share intent when one started the setup flow.
             String shared = getIntent().getStringExtra(Intent.EXTRA_TEXT);
