@@ -28,10 +28,10 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (!SetupGate.enforce(this)) return;
         showHome();
-        MmsScanWorker.sync(this);
     }
 
     private void showHome() {
+        MmsScanWorker.sync(this);
         LinearLayout root = UiKit.screen(this, "Less spam. More control.", false);
 
         LinearLayout overview = UiKit.card(this, root, UiKit.HIGHLIGHT);
