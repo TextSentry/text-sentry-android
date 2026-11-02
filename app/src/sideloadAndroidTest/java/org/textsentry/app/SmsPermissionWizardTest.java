@@ -64,6 +64,53 @@ public class SmsPermissionWizardTest {
         }
     }
 
+    @Test public void batteryStepExplainsUnrestrictedInLargeReadableSteps() throws Exception {
+        SetupFlow.reset(context);
+        new KeyVault(context).save("synthetic-battery-guide-test");
+        SetupFlow.advance(context, SetupFlow.BATTERY);
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, SetupActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Set battery use to Unrestricted"));
+            assertTrue(contains(root, "Open TextSentry app settings"));
+            assertTrue(contains(root, "Continue to start monitoring"));
+            for (String instruction : new String[] {
+                    "1. Tap the button below to open TextSentry settings.",
+                    "2. In App info, tap App battery usage (or Battery).",
+                    "3. Select Unrestricted, not Optimized or Restricted.",
+                    "4. Return to TextSentry to check the updated status."
+            }) {
+                TextView step = findText(root, instruction);
+                assertNotNull("Missing step: " + instruction, step);
+                float sp = step.getTextSize() /
+                        context.getResources().getDisplayMetrics().scaledDensity;
+                assertTrue("Too small for setup guidance: " + instruction, sp >= 18f);
+            }
+            assertTrue(contains(root,
+                    "Optional: this does not grant SMS access and may use more battery."));
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            new KeyVault(context).clear();
+            SetupFlow.reset(context);
+        }
+    }
+
+    private static TextView findText(View view, String value) {
+        if (view instanceof TextView && value.contentEquals(((TextView) view).getText()))
+            return (TextView) view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                TextView found = findText(group.getChildAt(i), value);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     private static boolean contains(View view, String value) {
         if (view instanceof TextView && value.contentEquals(((TextView) view).getText()))
             return true;
