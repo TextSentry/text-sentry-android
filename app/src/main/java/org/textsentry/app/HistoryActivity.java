@@ -59,6 +59,9 @@ public final class HistoryActivity extends Activity {
             UiKit.description(this, card,
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                             .format(new Date(item.timestamp)));
+            if ("mms".equals(item.source)) {
+                UiKit.chip(this, card, "Multimedia message (MMS) · text only");
+            }
             UiKit.chip(this, card, statusLabel(item.status));
 
             android.widget.TextView body = UiKit.text(this, item.body, 15, UiKit.INK, false);
