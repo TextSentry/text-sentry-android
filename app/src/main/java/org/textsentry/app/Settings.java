@@ -57,6 +57,21 @@ public final class Settings {
     }
     public boolean monitoring() { return prefs.getBoolean("monitor", false); }
     public boolean autoSend() { return prefs.getBoolean("auto_send", false); }
+    /** Disabled until a separate explicit MMS inbox-read consent is recorded. */
+    public boolean mmsEnabled() { return prefs.getBoolean("mms_monitor", false); }
+    public long mmsSinceMs() { return prefs.getLong("mms_since", 0L); }
+
+    public void setMmsMonitoring(boolean enabled) {
+        long since = enabled
+                ? (mmsEnabled() ? mmsSinceMs() : System.currentTimeMillis())
+                : 0L;
+        if (!prefs.edit().putBoolean("mms_monitor", enabled)
+                .putLong("mms_since", since)
+                .putString("generation", UUID.randomUUID().toString()).commit()) {
+            throw new IllegalStateException("Could not save MMS consent");
+        }
+    }
+
     public String generation() { return prefs.getString("generation", "initial-disabled"); }
 
     /** Hidden diagnostics are an explicit, persistent local opt-in, never a build flag. */

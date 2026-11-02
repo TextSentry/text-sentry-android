@@ -66,6 +66,26 @@ public class SettingsSafetyTest {
         assertEquals("", next.effectivePrompt());
     }
 
+    @Test public void mmsIsOffByDefaultAndOptInIsNotRetroactive() {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        app.deleteSharedPreferences("textsentry_settings");
+        Settings settings = new Settings(app);
+        assertFalse(settings.mmsEnabled());
+        assertEquals(0, settings.mmsSinceMs());
+        String initialGeneration = settings.generation();
+        long before = System.currentTimeMillis();
+        settings.setMmsMonitoring(true);
+        assertTrue(settings.mmsEnabled());
+        assertTrue(settings.mmsSinceMs() >= before);
+        assertNotEquals(initialGeneration, settings.generation());
+        long since = settings.mmsSinceMs();
+        settings.setMmsMonitoring(true);
+        assertEquals(since, settings.mmsSinceMs());
+        settings.setMmsMonitoring(false);
+        assertFalse(settings.mmsEnabled());
+        assertEquals(0, settings.mmsSinceMs());
+    }
+
     @Test public void savingAndPausingInvalidateAlreadyQueuedMessages() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteSharedPreferences("textsentry_settings");

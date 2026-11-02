@@ -47,7 +47,7 @@ public final class HistoryStore {
         }
         /** This app does not modify the system SMS inbox. */
         public String deletionStatus() {
-            return "sms".equals(source) ? "Not deleted by TextSentry" :
+            return ("sms".equals(source) || "mms".equals(source)) ? "Not deleted by TextSentry" :
                     "Not applicable — manual analysis";
         }
     }
@@ -115,7 +115,7 @@ public final class HistoryStore {
                       String reply, String status, String source) throws Exception {
         if (sender == null || body == null || body.isEmpty() || body.length() > 1600
                 || reply == null || reply.length() > 120 || status == null || source == null
-                || !("sms".equals(source) || "manual".equals(source))
+                || !("sms".equals(source) || "mms".equals(source) || "manual".equals(source))
                 || !Double.isFinite(confidence) || confidence < 0 || confidence > 1) {
             throw new IllegalArgumentException("Invalid history entry");
         }
@@ -164,7 +164,7 @@ public final class HistoryStore {
 
     /** A short, encrypted diagnostic ring; never includes HTTP Authorization headers. */
     public void addTrace(String source, String request, String response) throws Exception {
-        if (!("sms".equals(source) || "sample".equals(source) || "manual".equals(source))
+        if (!("sms".equals(source) || "mms".equals(source) || "sample".equals(source) || "manual".equals(source))
                 || request == null || request.isEmpty() || request.length() > 12000
                 || response == null || response.length() > 65536) {
             throw new IllegalArgumentException("Invalid model trace");
