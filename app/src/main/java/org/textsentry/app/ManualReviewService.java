@@ -30,7 +30,7 @@ public final class ManualReviewService {
     public static Result evaluate(String message, String rule, double threshold,
                                   Provider provider, Recorder recorder) throws Exception {
         if (!MessagePolicy.eligible("+15555550123", message)
-                || rule == null || rule.isBlank()) {
+                || rule == null || rule.trim().isEmpty()) {
             throw new IllegalArgumentException("Message or categories unavailable");
         }
         if (provider == null || recorder == null) {
