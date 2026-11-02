@@ -80,7 +80,13 @@ public final class SetupActivity extends Activity {
             next.setAction(Intent.ACTION_SEND).setType("text/plain");
             next.putExtra(Intent.EXTRA_TEXT, shared);
         }
-        startActivity(next);
+        if (destination == SettingsActivity.class) {
+            // Settings is the first screen, but Home remains underneath it so
+            // the back arrow returns to protection controls instead of exiting.
+            startActivities(new Intent[]{new Intent(this, MainActivity.class), next});
+        } else {
+            startActivity(next);
+        }
         finish();
     }
 
