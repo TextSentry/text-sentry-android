@@ -5,14 +5,6 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <application>
-        <!-- Manually shared/copy-pasted MMS text only. No background MMS access. -->
-        <activity android:name=".MainActivity" android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
         <!-- Separate from the AppAuth textsentry://auth/callback handler.
              Browser return is informational; subscription is always verified by AWS. -->
         <activity android:name=".AccountActivity" android:exported="true"
