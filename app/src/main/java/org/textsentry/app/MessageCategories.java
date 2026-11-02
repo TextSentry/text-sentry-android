@@ -37,22 +37,22 @@ public final class MessageCategories {
         StringBuilder result = new StringBuilder();
         result.append("Classify whether an incoming SMS belongs to ANY ONE selected category. ")
                 .append("Judge its message purpose even if it has no unsubscribe instructions. ")
-                .append("Recipient opt-in status cannot be inferred from the SMS:\\n");
+                .append("Recipient opt-in status cannot be inferred from the SMS:\n");
         if ((mask & VOTE) != 0) {
             result.append("- nonpartisan get-out-the-vote reminders urging the recipient or ")
                     .append("friends to vote or make a voting plan. An election website link, ")
                     .append("date or polling-place logistics inside an appeal does NOT make ")
-                    .append("that appeal a neutral official notice.\\n");
+                    .append("that appeal a neutral official notice.\n");
         }
         if ((mask & POLITICAL) != 0) {
             result.append("- candidate or political party campaigns, partisan issue advocacy ")
                     .append("and persuasion: praise, blame or criticism of candidates, parties ")
                     .append("or their policies, including indirect attacks and rhetorical ")
-                    .append("questions. No request for votes, money or volunteers is required.\\n");
+                    .append("questions. No request for votes, money or volunteers is required.\n");
         }
         if ((mask & MARKETING) != 0) {
             result.append("- marketing advertisements promoting purchases, sales, coupons ")
-                    .append("or commercial offers; not routine business service updates.\\n");
+                    .append("or commercial offers; not routine business service updates.\n");
         }
         result.append("For ALL categories, do not require an opt-out keyword; STOP/END text, ")
                 .append("URLs, prices and automated delivery alone do not imply a match. ")
@@ -62,7 +62,7 @@ public final class MessageCategories {
                 .append("administration notices, security codes, emergencies, scams, personal ")
                 .append("messages and unclear texts. Only the owner's fixed STOP can be sent. ");
         if (!extraRestrictions.trim().isEmpty()) {
-            result.append("\\nAdditional user restrictions (may narrow but never override ")
+            result.append("\nAdditional user restrictions (may narrow but never override ")
                     .append("selected categories or safety rules): ")
                     .append(extraRestrictions.trim());
         }
