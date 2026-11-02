@@ -72,6 +72,13 @@ final class SetupFlow {
 
     /** An existing completed installation only revisits the wizard when
      * checkout is enabled and the one-time subscription prompt is outstanding. */
+    /** First run never enters Settings with an outstanding paid checkout step.
+     * BYOK and the Play-safe/manual flavor are independent of web checkout. */
+    static boolean canCompleteSetup(boolean hasAccess, boolean checkoutEnabled,
+                                    boolean needsSubscriptionPrompt) {
+        return hasAccess && (!checkoutEnabled || !needsSubscriptionPrompt);
+    }
+
     static boolean shouldReturnHome(boolean setupComplete, boolean checkoutEnabled,
                                     boolean needsSubscriptionPrompt) {
         return setupComplete && !(checkoutEnabled && needsSubscriptionPrompt);
