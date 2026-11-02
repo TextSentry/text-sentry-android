@@ -35,6 +35,14 @@ Existing users need to complete the guide once after this release; credentials, 
 
 Home keeps monitoring controls and sample analysis up front (sideload), or manual analysis and optional SMS compose (Play). Account, history, and settings are simple secondary actions; detailed rules and privacy controls remain available in Settings.
 
+### Sideload app updates
+
+The **sideload-only** Android build periodically checks the public GitHub rolling `latest` prerelease (every 24 hours with WorkManager when network access is available). The app also checks at most once daily while opening Home, and Home offers **Check for updates**. An available build is offered in an in-app dialog on the next app open; tapping **Get update** opens the signed APK's GitHub download URL in a browser. Android handles the user-confirmed installation, with no silent install, download in the background, or automatic deletion of local settings/history. **Later** dismisses that version; the next newer signed build can prompt again. Offline/rate-limited checks fail quietly, and the manual button reports a failure.
+
+The update check reads only the public GitHub release metadata and compares its published Android `versionCode` with the running APK's `versionCode`; it does not transmit messages, account identity, API keys, history or any other app data. GitHub sees a normal HTTP request (including ordinary network metadata such as IP address). Only the rolling `latest` prerelease with the exact expected uploaded sideload APK asset is eligible. The release pipeline publishes `Android versionCode: N` in the release body to support the comparison. Unversioned/invalid metadata is not offered.
+
+**Play builds do not include this updater.** Google Play distribution and in-app updates are deferred to a separate task.
+
 ### Message categories
 
 The Settings page provides three independent checkboxes:

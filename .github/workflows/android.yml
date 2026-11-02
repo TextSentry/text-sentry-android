@@ -202,7 +202,9 @@ jobs:
           test -s "$build_apk"
           cp "$build_apk" "$latest_apk"
           title="TextSentry latest experimental Android APK (build ${GITHUB_RUN_NUMBER})"
-          notes="Rolling signed sideload APK from main, build ${GITHUB_RUN_NUMBER}. Experimental: check permissions and release notes before enabling SMS monitoring. Versioned prereleases remain available."
+          version_code=$((GITHUB_RUN_ID / 100))
+          notes="Rolling signed sideload APK from main, build ${GITHUB_RUN_NUMBER}. Experimental: check permissions and release notes before enabling SMS monitoring. Versioned prereleases remain available.
+Android versionCode: ${version_code}"
           if gh release view latest --json tagName >/dev/null 2>&1; then
             gh release upload latest "$latest_apk" --clobber
             gh release edit latest --title "$title" --notes "$notes" --prerelease
