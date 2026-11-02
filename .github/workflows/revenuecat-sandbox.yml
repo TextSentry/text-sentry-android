@@ -82,10 +82,10 @@ jobs:
           grep -F 'subscription_status' app/src/main/java/org/textsentry/app/AccountStatusClient.java
           grep -F 'subscription_reason' app/src/main/java/org/textsentry/app/AccountStatusClient.java
           grep -F 'RevenueCat customer ID' app/src/main/java/org/textsentry/app/AccountActivity.java
-          grep -F 'Review plans and subscribe' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'Allow restricted settings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'Continue to battery settings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'shouldReturnHome' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'startActivity(SubscriptionOnboarding.continueSetupIntent(this))' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SetupFlow.readyForSettings' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SettingsActivity.class' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
 
       - name: Upload short-lived private test artifact (never a GitHub Release)
         uses: actions/upload-artifact@v7

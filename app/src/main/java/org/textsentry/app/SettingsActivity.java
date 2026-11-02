@@ -122,12 +122,39 @@ public final class SettingsActivity extends Activity {
                             DataControl.deleteLocalData(this);
                             finish();
                         }).setNegativeButton("Cancel", null).show());
-        if (!getPackageName().isEmpty()) {
+        if (SetupPermissions.supportsMonitoring()) {
+            // Keep Android's restricted-permission and battery guidance accessible
+            // after checkout; neither permission is silently granted during setup.
+            LinearLayout permissions = UiKit.card(this, root, 0xFFFFFFFF);
+            UiKit.heading(this, permissions, "SMS access");
+            UiKit.chip(this, permissions, SetupPermissions.hasIncoming(this)
+                    ? "✓ Incoming SMS allowed" : "○ Incoming SMS permission needed");
+            UiKit.description(this, permissions,
+                    "Grant incoming SMS access before starting preview on Home. "
+                            + "Replies remain off unless you explicitly enable them.");
+            if (!SetupPermissions.hasIncoming(this)) {
+                UiKit.button(this, permissions, "Allow incoming SMS", true,
+                        () -> SetupPermissions.requestIncoming(this, 301));
+                UiKit.description(this, permissions,
+                        "If Android blocks the permission, open app settings → "
+                                + "Permissions → SMS. Your installer may restrict SMS access.");
+                UiKit.button(this, permissions, "Open Android app settings", false,
+                        () -> SetupPermissions.openAppSettings(this));
+            }
+
             LinearLayout background = UiKit.card(this, root, 0xFFFFFFFF);
             UiKit.heading(this, background, "Background operation");
-            UiKit.button(this, background, "Background battery settings", false, () ->
-                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:" + getPackageName()))));
+            UiKit.chip(this, background, SetupPermissions.unrestricted(this)
+                    ? "✓ Battery optimization exemption detected"
+                    : "○ Battery optimization exemption not detected");
+            batteryInstruction(background, "1. Open TextSentry app settings below.");
+            UiKit.button(this, background, "Open TextSentry app settings", false,
+                    () -> SetupPermissions.openBatterySettings(this));
+            batteryInstruction(background, "2. Tap App battery usage (or Battery).");
+            batteryInstruction(background, "3. Choose Unrestricted.");
+            UiKit.description(this, background,
+                    "Recommended for timely monitoring; optional and may use more battery. "
+                            + "This does not grant SMS access.");
         }
 
         LinearLayout sampleCard = UiKit.card(this, root, 0xFFFFFFFF);
@@ -170,6 +197,23 @@ public final class SettingsActivity extends Activity {
             }, "textsentry-sample").start();
         });
 
+    }
+
+    /** Readable battery guidance is available in Settings, not the first-run wizard. */
+    private void batteryInstruction(LinearLayout card, String instruction) {
+        TextView step = UiKit.text(this, instruction, 18, UiKit.INK, false);
+        step.setBackground(UiKit.shape(UiKit.HIGHLIGHT, UiKit.dp(this, 12), 0));
+        step.setPadding(UiKit.dp(this, 14), UiKit.dp(this, 14),
+                UiKit.dp(this, 14), UiKit.dp(this, 14));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = UiKit.dp(this, 12);
+        card.addView(step, params);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                                     int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 301 && !isFinishing()) recreate();
     }
 
     private void manageSubscription() {

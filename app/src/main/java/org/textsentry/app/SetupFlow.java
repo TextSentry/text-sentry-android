@@ -64,10 +64,24 @@ final class SetupFlow {
                 .putBoolean(DONE, true).commit();
     }
 
-    /** A one-time optional checkout step, separate from the saved permission stage. */
+    /** Only a verified managed subscription or an explicit personal key unlocks
+     * first-run settings. The Play flavor has no hosted checkout today. */
+    static boolean readyForSettings(boolean googleSignedIn, boolean hasOwnKey,
+                                    boolean sideloadBuild, boolean subscriptionVerified) {
+        return googleSignedIn ? (!sideloadBuild || subscriptionVerified) : hasOwnKey;
+    }
+
+    /** Clear a prior account's handoff before switching/signing in again. */
+    static void resetSubscriptionPrompt(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .remove(SUBSCRIPTION_PROMPT_SEEN)
+                .remove(SUBSCRIPTION_HANDOFF_PENDING).commit();
+    }
+
+    /** A one-time required managed-account checkout step, separate from the saved permission stage. */
     static boolean shouldPromptSubscription(boolean googleSignedIn, boolean hasOwnKey,
                                             boolean sideloadBuild, boolean promptSeen) {
-        return sideloadBuild && googleSignedIn && !hasOwnKey && !promptSeen;
+        return sideloadBuild && googleSignedIn && !promptSeen;
     }
 
     /** An existing completed installation only revisits the wizard when

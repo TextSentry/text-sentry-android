@@ -35,7 +35,6 @@ public final class AccountActivity extends Activity {
     private TextView subscriptionStatus;
     private TextView revenueCatAccountId;
     private Button subscribeButton;
-    private Button continueWithoutKeyButton;
     private boolean continueSetup;
     private boolean onboardingKeyFetchStarted;
     private boolean keyRequestInFlight;
@@ -86,16 +85,22 @@ public final class AccountActivity extends Activity {
         final TextView accountId = revenueCatAccountId;
         if (label == null) return;
         label.setText("Checking subscription…");
+        if (continueSetup && subscribeButton != null) {
+            subscribeButton.setText("Checking subscription…");
+            subscribeButton.setEnabled(false);
+        }
         try {
             AuthState auth = sessions.load();
             if (auth == null || !auth.isAuthorized()) {
                 label.setText("Sign in again to check subscription.");
+                offerSignInRetry();
                 return;
             }
             auth.performActionWithFreshTokens(service, (accessToken, idToken, failure) -> {
                 if (generation != authGeneration || isFinishing() || isDestroyed()) return;
                 if (failure != null || accessToken == null) {
                     label.setText("Subscription status unavailable");
+                    offerSubscriptionRetry();
                     return;
                 }
                 new Thread(() -> {
@@ -118,6 +123,11 @@ public final class AccountActivity extends Activity {
                         label.setText(verified == null
                                 ? "Subscription status unavailable"
                                 : verified.label(sandbox));
+                        if (verified == null || "unavailable".equals(verified.subscription)) {
+                            // A failed verification is not a reason to purchase again.
+                            offerSubscriptionRetry();
+                            return;
+                        }
                         if (verified != null && accountId != null
                                 && revenueCatAccountId == accountId) {
                             // Cognito sub is the RevenueCat App User ID. Select/copy it
@@ -132,11 +142,14 @@ public final class AccountActivity extends Activity {
                             if (keyEligible) {
                                 subscribeButton.setEnabled(true);
                                 subscribeButton.setText(continueSetup
-                                        ? "Continue setup" : "Refresh managed key");
+                                        ? "Finish setup" : "Refresh managed key");
                                 subscribeButton.setOnClickListener(v -> fetchManagedKey());
-                            } else if (paid) {
-                                subscribeButton.setEnabled(false);
-                                subscribeButton.setText("Subscription active · key unavailable");
+                            } else if (paid || (verified.subscribed() && verified.isSandbox == null)
+                                    || "missing_entitlement".equals(verified.reason)) {
+                                // Ambiguous existing purchases require verification, not another charge.
+                                subscribeButton.setEnabled(true);
+                                subscribeButton.setText("Check subscription again");
+                                subscribeButton.setOnClickListener(v -> refreshSubscription());
                             } else {
                                 subscribeButton.setEnabled(true);
                                 subscribeButton.setText("Subscribe to TextSentry");
@@ -153,7 +166,22 @@ public final class AccountActivity extends Activity {
             });
         } catch (Exception ignored) {
             label.setText("Subscription status unavailable");
+            offerSubscriptionRetry();
         }
+    }
+
+    private void offerSubscriptionRetry() {
+        if (!continueSetup || subscribeButton == null) return;
+        subscribeButton.setText("Check subscription again");
+        subscribeButton.setEnabled(true);
+        subscribeButton.setOnClickListener(v -> refreshSubscription());
+    }
+
+    private void offerSignInRetry() {
+        if (!continueSetup || subscribeButton == null) return;
+        subscribeButton.setText("Sign in again");
+        subscribeButton.setEnabled(true);
+        subscribeButton.setOnClickListener(v -> startLogin());
     }
 
     private void render() {
@@ -161,15 +189,14 @@ public final class AccountActivity extends Activity {
         LinearLayout root = UiKit.screen(this,
                 welcome ? "Continue with Google" : "Account", !welcome);
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, card, welcome ? "Sign in or sign up" : "Google account");
+        UiKit.heading(this, card, continueSetup ? "Activate subscription" : welcome ? "Sign in or sign up" : "Google account");
         UiKit.description(this, card,
-                welcome ? "One account. Less spam." : "Manage your Google sign-in.");
+                continueSetup ? "Subscribe securely. We verify payment automatically." : welcome ? "One account. Less spam." : "Manage your Google sign-in.");
         status = UiKit.description(this, card, "");
         refreshStatus();
         subscriptionStatus = null;
         revenueCatAccountId = null;
         subscribeButton = null;
-        continueWithoutKeyButton = null;
         if (sessions.hasSession() && "sideload".equals(BuildConfig.FLAVOR)) {
             // Always explain the subscription path, even in a checkout-disabled
             // public prerelease. Don't silently omit it and confuse users.
@@ -178,6 +205,10 @@ public final class AccountActivity extends Activity {
             if (BuildConfig.WEB_CHECKOUT_ENABLED) {
                 subscribeButton = UiKit.button(this, card, "Subscribe to TextSentry",
                         true, this::openCheckout);
+                if (continueSetup) {
+                    subscribeButton.setText("Checking subscription…");
+                    subscribeButton.setEnabled(false);
+                }
                 UiKit.description(this, card,
                         "Secure browser checkout. Your subscription is verified by TextSentry.");
             } else {
@@ -189,27 +220,22 @@ public final class AccountActivity extends Activity {
                         "Install the subscription-enabled sideload APK to subscribe. "
                                 + "Your account and local history are not removed.");
             }
-            UiKit.button(this, card, "Refresh subscription", false,
-                    this::refreshSubscription);
-            revenueCatAccountId = UiKit.description(this, card, "");
-            revenueCatAccountId.setTextIsSelectable(true);
-            if (continueSetup) {
-                continueWithoutKeyButton = UiKit.button(this, card,
-                        "Continue to SMS permissions without a key", false, () -> {
-                            new Settings(this).pause();
-                            SetupFlow.completeSubscriptionPrompt(this);
-                            finish();
-                        });
-                continueWithoutKeyButton.setVisibility(android.view.View.GONE);
+            if (!continueSetup) {
+                UiKit.button(this, card, "Refresh subscription", false,
+                        this::refreshSubscription);
+                revenueCatAccountId = UiKit.description(this, card, "");
+                revenueCatAccountId.setTextIsSelectable(true);
             }
         }
         if (sessions.hasSession()) {
-            UiKit.button(this, card, "Switch Google account", false, this::startLogin);
+            if (!continueSetup && !welcome) {
+                UiKit.button(this, card, "Switch Google account", false, this::startLogin);
+            }
         } else {
             UiKit.googleSignInButton(this, card, this::startLogin);
         }
         // BYOK entry lives on the required Setup screen; no settings bypass here.
-        if (sessions.hasSession()) {
+        if (sessions.hasSession() && !continueSetup && !welcome) {
             UiKit.button(this, card, "Sign out on this device", false, () ->
                     new AlertDialog.Builder(this)
                             .setTitle("Sign out of TextSentry?")
@@ -221,6 +247,7 @@ public final class AccountActivity extends Activity {
                                     new Settings(this).pause();
                                     ManagedKeyMemory.clear();
                                     sessions.clear();
+                                    SetupFlow.resetSubscriptionPrompt(this);
                                     render();
                                 } catch (Exception e) {
                                     status.setText("Could not remove the account session.");
@@ -229,7 +256,7 @@ public final class AccountActivity extends Activity {
                             .setNegativeButton("Cancel", null).show());
         }
 
-        if (sessions.hasSession()) {
+        if (sessions.hasSession() && !continueSetup && !welcome) {
             UiKit.button(this, card, "Refresh key", false, this::fetchManagedKey);
         }
         UiKit.description(this, root, "Your key stays in memory. No SMS goes to AWS.");
@@ -252,6 +279,7 @@ public final class AccountActivity extends Activity {
 
     private void startLogin() {
         authGeneration++;
+        if ("sideload".equals(BuildConfig.FLAVOR)) SetupFlow.resetSubscriptionPrompt(this);
         new Settings(this).pause(); // Don't keep queued SMS work across account switches.
         ManagedKeyMemory.clear();
         status.setText("Connecting securely to TextSentry…");
@@ -338,13 +366,13 @@ public final class AccountActivity extends Activity {
                                 authGeneration++;
                                 ManagedKeyMemory.clear();
                                 if (getIntent().getBooleanExtra("welcome", false)) {
-                                    // Return straight to the battery step, without a second
-                                    // account screen. Managed key remains RAM-only.
+                                    // Return to the short subscription flow; key stays RAM-only.
                                     finish();
                                 } else {
                                     render();
                                     refreshSubscription();
-                                    fetchManagedKey();
+                                    // Onboarding must verify entitlement before asking AWS for a key.
+                                    if (!continueSetup) fetchManagedKey();
                                 }
                             }
                         });
@@ -432,9 +460,6 @@ public final class AccountActivity extends Activity {
         }
         final int generation = authGeneration;
         keyRequestInFlight = true;
-        if (continueWithoutKeyButton != null) {
-            continueWithoutKeyButton.setVisibility(android.view.View.GONE);
-        }
         status.setText("Checking your managed key…");
         try {
             AuthState state = sessions.load();
@@ -485,18 +510,11 @@ public final class AccountActivity extends Activity {
                             status.setText(problem == null
                                     ? "Could not retrieve managed key."
                                     : problem);
-                            if (continueSetup && continueWithoutKeyButton != null
-                                    && problem != null && problem.contains("revoked")) {
-                                status.append(" You can set permissions now, but "
-                                        + "AI analysis needs a managed key.");
-                                continueWithoutKeyButton.setVisibility(android.view.View.VISIBLE);
-                            }
                         } else {
                             ManagedKeyMemory.install(fetched.key, fetched.expiresAtMillis);
                             status.setText(fetched.status());
                             if (continueSetup) {
-                                // Returning to SetupActivity advances to SMS permissions.
-                                // Only mark the prompt complete AFTER the key is in RAM.
+                                // Only verified entitlement and a RAM key can finish setup.
                                 if (SubscriptionOnboarding.completeAfterVerifiedKey(this)) {
                                     finish();
                                 } else {
