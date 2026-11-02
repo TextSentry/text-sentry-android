@@ -77,9 +77,9 @@ jobs:
       - name: Check sideload-only production checkout link
         run: |
           grep -F 'https://pay.rev.cat/mimrlvpobvqnjikw/' app/src/main/java/org/textsentry/app/WebCheckout.java
-          grep -F 'Subscribe or restore' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'SetupFlow.canCompleteSetup' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'openSettings();' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'startActivity(SubscriptionOnboarding.continueSetupIntent(this))' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SetupFlow.readyForSettings' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SettingsActivity.class' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'Subscribe to TextSentry' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'BuildConfig.WEB_CHECKOUT_ENABLED' app/src/main/java/org/textsentry/app/AccountActivity.java
