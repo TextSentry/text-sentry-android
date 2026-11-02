@@ -42,6 +42,9 @@ public final class MmsScanWorker extends Worker {
     }
 
     static void sync(Context context) {
+        if (context.getApplicationContext() instanceof MmsApplication) {
+            ((MmsApplication) context.getApplicationContext()).refreshObserver();
+        }
         WorkManager manager = WorkManager.getInstance(context);
         if (!authorized(context)) {
             manager.cancelUniqueWork(PERIODIC);
