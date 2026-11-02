@@ -144,7 +144,9 @@ public final class AccountActivity extends Activity {
                                 subscribeButton.setText(continueSetup
                                         ? "Finish setup" : "Refresh managed key");
                                 subscribeButton.setOnClickListener(v -> fetchManagedKey());
-                            } else if (paid) {
+                            } else if (paid || (verified.subscribed() && verified.isSandbox == null)
+                                    || "missing_entitlement".equals(verified.reason)) {
+                                // Ambiguous existing purchases require verification, not another charge.
                                 subscribeButton.setEnabled(true);
                                 subscribeButton.setText("Check subscription again");
                                 subscribeButton.setOnClickListener(v -> refreshSubscription());
