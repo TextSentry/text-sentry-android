@@ -90,27 +90,17 @@ final class MmsInboxReader {
 
     private static String textAndImages(ContentResolver resolver, long id, String subject) {
         List<String> texts = new ArrayList<>();
-        List<String> ocr = new ArrayList<>();
         try (Cursor cursor = resolver.query(Uri.parse("content://mms/" + id + "/part"),
                 new String[]{"_id", "ct", "text"}, null, null, "seq ASC")) {
             if (cursor == null) return "";
-            int imageCount = 0;
             while (cursor.moveToNext()) {
                 String mime = cursor.getString(1);
-                if (mime == null) continue;
-                long partId = cursor.getLong(0);
-                if ("text/plain".equalsIgnoreCase(mime)) {
-                    String text = cursor.getString(2);
-                    if (text != null) texts.add(text);
-                } else if (imageCount < 2 && (mime.equalsIgnoreCase("image/png")
-                        || mime.equalsIgnoreCase("image/jpeg")
-                        || mime.equalsIgnoreCase("image/webp"))) {
-                    imageCount++;
-                    ocr.add(MmsImageOcr.read(resolver,
-                            Uri.parse("content://mms/part/" + partId)));
-                }
+                if (!"text/plain".equalsIgnoreCase(mime)) continue;
+                String text = cursor.getString(2);
+                if (text != null) texts.add(text);
             }
         }
-        return MmsInboxPolicy.combineText(subject, texts, ocr);
+        // Deliberately no OCR SDK: images remain on-device and are not analyzed.
+        return MmsInboxPolicy.combineText(subject, texts, java.util.Collections.emptyList());
     }
 }
