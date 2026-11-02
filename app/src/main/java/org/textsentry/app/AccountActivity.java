@@ -85,16 +85,22 @@ public final class AccountActivity extends Activity {
         final TextView accountId = revenueCatAccountId;
         if (label == null) return;
         label.setText("Checking subscription…");
+        if (continueSetup && subscribeButton != null) {
+            subscribeButton.setText("Checking subscription…");
+            subscribeButton.setEnabled(false);
+        }
         try {
             AuthState auth = sessions.load();
             if (auth == null || !auth.isAuthorized()) {
                 label.setText("Sign in again to check subscription.");
+                offerSignInRetry();
                 return;
             }
             auth.performActionWithFreshTokens(service, (accessToken, idToken, failure) -> {
                 if (generation != authGeneration || isFinishing() || isDestroyed()) return;
                 if (failure != null || accessToken == null) {
                     label.setText("Subscription status unavailable");
+                    offerSubscriptionRetry();
                     return;
                 }
                 new Thread(() -> {
@@ -117,6 +123,11 @@ public final class AccountActivity extends Activity {
                         label.setText(verified == null
                                 ? "Subscription status unavailable"
                                 : verified.label(sandbox));
+                        if (verified == null || "unavailable".equals(verified.subscription)) {
+                            // A failed verification is not a reason to purchase again.
+                            offerSubscriptionRetry();
+                            return;
+                        }
                         if (verified != null && accountId != null
                                 && revenueCatAccountId == accountId) {
                             // Cognito sub is the RevenueCat App User ID. Select/copy it
@@ -134,8 +145,9 @@ public final class AccountActivity extends Activity {
                                         ? "Finish setup" : "Refresh managed key");
                                 subscribeButton.setOnClickListener(v -> fetchManagedKey());
                             } else if (paid) {
-                                subscribeButton.setEnabled(false);
-                                subscribeButton.setText("Subscription active · key unavailable");
+                                subscribeButton.setEnabled(true);
+                                subscribeButton.setText("Check subscription again");
+                                subscribeButton.setOnClickListener(v -> refreshSubscription());
                             } else {
                                 subscribeButton.setEnabled(true);
                                 subscribeButton.setText("Subscribe to TextSentry");
@@ -152,7 +164,22 @@ public final class AccountActivity extends Activity {
             });
         } catch (Exception ignored) {
             label.setText("Subscription status unavailable");
+            offerSubscriptionRetry();
         }
+    }
+
+    private void offerSubscriptionRetry() {
+        if (!continueSetup || subscribeButton == null) return;
+        subscribeButton.setText("Check subscription again");
+        subscribeButton.setEnabled(true);
+        subscribeButton.setOnClickListener(v -> refreshSubscription());
+    }
+
+    private void offerSignInRetry() {
+        if (!continueSetup || subscribeButton == null) return;
+        subscribeButton.setText("Sign in again");
+        subscribeButton.setEnabled(true);
+        subscribeButton.setOnClickListener(v -> startLogin());
     }
 
     private void render() {
@@ -176,6 +203,10 @@ public final class AccountActivity extends Activity {
             if (BuildConfig.WEB_CHECKOUT_ENABLED) {
                 subscribeButton = UiKit.button(this, card, "Subscribe to TextSentry",
                         true, this::openCheckout);
+                if (continueSetup) {
+                    subscribeButton.setText("Checking subscription…");
+                    subscribeButton.setEnabled(false);
+                }
                 UiKit.description(this, card,
                         "Secure browser checkout. Your subscription is verified by TextSentry.");
             } else {
