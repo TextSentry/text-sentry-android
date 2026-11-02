@@ -5,7 +5,7 @@
 **Two product flavors** are intentionally offered:
 
 - `play`: text shared/pasted manually, user-consented TypeSafe AI evaluation, editable suggestion and user-initiated SMS composition via `ACTION_SENDTO`. **No SMS or call-log permissions, receivers, monitoring or automatic SMS sends.**
-- `sideload`: experimental SMS monitor/auto-send features with Android `RECEIVE_SMS` and `SEND_SMS`, runtime permission buttons, an encrypted history of processed texts and Android SMS send callbacks; **do not upload this artifact to Play Console.** The archive does not need READ_SMS. Inbox deletion is unavailable without building a complete default SMS/MMS app.
+- `sideload`: experimental SMS monitoring plus separately opt-in MMS reading, with hard-restricted `RECEIVE_SMS`, `SEND_SMS`, `READ_SMS`, `RECEIVE_MMS` and `RECEIVE_WAP_PUSH` permissions. The MMS path reads only new completed MMS stored by the existing default messaging app; it OCRs images locally, classifies only extracted text, uses encrypted history and blocks automatic group replies. A compatible installer/Android grant is required. **Never upload this artifact to Play Console.** Inbox deletion remains unavailable without building a complete default SMS/MMS app.
 
 Google Play's SMS policy requires active default SMS handler status or an individually approved exception for the restricted permissions. A hypothetical exception for *device automation* requires automation across multiple areas of Android; this app currently automates SMS only and should not claim it qualifies. A spam-blocking exception is also subject to Google review, not guaranteed. Do not change the manifest to mimic default-handler eligibility without implementing and testing a complete usable SMS/MMS client.
 
