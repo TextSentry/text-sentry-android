@@ -84,8 +84,8 @@ public final class MainActivity extends Activity {
                 : "MMS off");
         UiKit.description(this, mms,
                 "Experimental sideload only. Reads new MMS after your messaging app "
-                + "downloads them. Text and on-device image OCR are classified automatically; "
-                + "no images go to the AI provider. Android restricts SMS inbox access.");
+                + "downloads them. MMS text and subject are classified automatically; "
+                + "image-only messages cannot be classified. Android restricts inbox access.");
         UiKit.button(this, mms, settings.mmsEnabled() ? "Turn off MMS filtering"
                 : "Enable automatic MMS filtering", false, () -> {
             if (settings.mmsEnabled()) {
@@ -96,8 +96,8 @@ public final class MainActivity extends Activity {
                 new AlertDialog.Builder(this)
                         .setTitle("Allow automatic MMS analysis?")
                         .setMessage("TextSentry will read only newly downloaded MMS from "
-                                + "Android's message store and send extracted text, including "
-                                + "on-device image OCR, to your selected AI provider. Images "
+                                + "Android's message store and send extracted text "
+                                + "to your selected AI provider. Images "
                                 + "stay on your device. MMS auto-replies follow your existing "
                                 + "STOP setting, but group MMS replies are always blocked. "
                                 + "Android requires restricted READ_SMS permission; "
