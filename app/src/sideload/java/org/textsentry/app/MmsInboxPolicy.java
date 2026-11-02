@@ -21,12 +21,11 @@ final class MmsInboxPolicy {
         return MessagePolicy.eligible(sender, body);
     }
 
-    static String combineText(String subject, List<String> parts, List<String> ocr) {
+    static String combineText(String subject, List<String> parts) {
         StringBuilder result = new StringBuilder();
         Set<String> unique = new HashSet<>();
         append(result, unique, subject);
         if (parts != null) for (String part : parts) append(result, unique, part);
-        if (ocr != null) for (String part : ocr) append(result, unique, part);
         return result.toString();
     }
 
