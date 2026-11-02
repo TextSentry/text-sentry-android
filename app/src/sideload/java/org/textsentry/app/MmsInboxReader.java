@@ -101,6 +101,6 @@ final class MmsInboxReader {
             }
         }
         // Deliberately no OCR SDK: images remain on-device and are not analyzed.
-        return MmsInboxPolicy.combineText(subject, texts, java.util.Collections.emptyList());
+        return MmsInboxPolicy.combineText(subject, texts);
     }
 }
