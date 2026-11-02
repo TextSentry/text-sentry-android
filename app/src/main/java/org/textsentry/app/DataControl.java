@@ -24,6 +24,7 @@ public final class DataControl {
         }
         for (String name : new String[] {"textsentry_settings", "textsentry_reply_ledger",
                 "textsentry_secrets", "textsentry_message_history", "textsentry_auth_session",
+                "textsentry_mms_seen",
                 Onboarding.PREFS}) {
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit();
         }
