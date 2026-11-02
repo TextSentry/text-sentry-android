@@ -82,9 +82,9 @@ jobs:
           grep -F 'subscription_status' app/src/main/java/org/textsentry/app/AccountStatusClient.java
           grep -F 'subscription_reason' app/src/main/java/org/textsentry/app/AccountStatusClient.java
           grep -F 'RevenueCat customer ID' app/src/main/java/org/textsentry/app/AccountActivity.java
-          grep -F 'Subscribe or restore' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'SetupFlow.canCompleteSetup' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'openSettings();' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'startActivity(SubscriptionOnboarding.continueSetupIntent(this))' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SetupFlow.readyForSettings' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'SettingsActivity.class' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
 
       - name: Upload short-lived private test artifact (never a GitHub Release)
