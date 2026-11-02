@@ -2,7 +2,7 @@
 
 **Less noise. More signal.**
 
-TextSentry is an Android message assistant powered by **TypeSafe Jev System One**. New users sign in with Google to use a monthly $1-capped OpenRouter key automatically; or they can skip registration and bring their own TypeSafe API key (BYOK). Both modes use the same single Jev yes/no decision, selected message categories and 50–100% threshold (default **95%**). The only automated reply is the fixed **STOP**.
+TextSentry is an Android message assistant powered by **TypeSafe Jev System One**. New users sign in with Google to use a monthly capped OpenRouter key automatically; or they can skip registration and bring their own TypeSafe API key (BYOK). Both modes use the same single Jev yes/no decision, selected message categories and 50–100% threshold (default **90%**). The only automated reply is the fixed **STOP**.
 
 ## License
 
@@ -23,13 +23,13 @@ Two distributions are maintained:
 
 ## Guided first-run setup
 
-Both editions begin with a branded Google sign-in or optional on-device TypeSafe BYOK. Until the wizard is completed, Home, Settings, History and developer tools are inaccessible (including on upgrades from earlier releases). The compact navy header uses the shared TextSentry shield and wordmark, with website-matched type, cyan accent, and the same "Stop sorting through spam" messaging.
+New users see a short setup flow: **Sign in with Google → Subscribe to TextSentry → Settings**. The subscription opens the hosted RevenueCat checkout; returning from the browser is not proof of payment. TextSentry checks the signed-in account's real entitlement and retrieves the managed OpenRouter key into process RAM before finishing setup. There is no skip-subscription or continue-without-a-key button for managed access. Subscription checkout is available in signed sideload builds with checkout enabled, not in the Play flavor.
 
-**Experimental sideload:** (1) sign in or BYOK, (2) request incoming SMS access, with outgoing SMS optional, (3) follow the large on-screen battery guide: **Open TextSentry app settings → App battery usage (or Battery) → Unrestricted**, then return to TextSentry, and (4) **Start monitoring**. The final action starts **preview-only**, never sends automatic replies. Unrestricted battery is recommended but not required; it does not grant SMS permissions. When the installer hard-restricts SMS access, Android can refuse the grant; the wizard offers app-info and troubleshooting, and users may finish without monitoring. No SMS text goes to TextSentry AWS.
+**Bring your own key:** The small TypeSafe API-key link on the first screen offers an alternative without registration or a TextSentry subscription. The user must first accept the provider responsibility/retention notice. A saved key opens **Settings** directly. Signing in with Google does not silently switch to BYOK if managed access fails.
 
-**Google Play:** (1) sign in or BYOK, (2) start manually reviewing shared/pasted texts. No SMS runtime permissions, background monitoring or auto-reply controls exist in Play flavor.
+**Permissions after setup:** SMS, MMS, automatic replies, and battery-optimization settings are not part of the first-run wizard. The experimental sideload Settings page provides SMS access and a readable **Unrestricted** battery guide; Home handles preview monitoring, optional SMS replies, and separate MMS consent. Monitoring and automatic replies remain **off by default**. Play stays manual-only without restricted SMS permissions. The battery exemption is optional and does not grant SMS permissions.
 
-Existing users need to complete the guide once after this release; credentials, message history, categories, confidence and existing BYOK settings remain intact. Resetting app data also resets onboarding.
+Existing installations retain their encrypted credentials, local history, settings and monitoring choices. Google-managed sideload users upgrading with an outstanding subscription handoff are asked to verify their subscription once; they are not forced through the old permission wizard. A new sign-in cannot reuse a previous account's completed checkout handoff. Shared text remains available when onboarding was launched from the Play share target.
 
 ## App experience
 
