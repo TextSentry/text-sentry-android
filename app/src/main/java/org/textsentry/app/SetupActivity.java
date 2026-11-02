@@ -251,23 +251,51 @@ public final class SetupActivity extends Activity {
                 && new AuthSessionStore(this).hasSession()
                 && !new KeyVault(this).hasKey();
         LinearLayout root = stage(extra ? "04 / BACKGROUND ACCESS" : "03 / BACKGROUND ACCESS",
-                "Keep protection running.",
-                "After SMS permissions, set TextSentry battery use to Unrestricted.",
+                "Keep TextSentry running.",
+                "Choose Unrestricted in Android's battery settings to help prevent delays.",
                 extra ? 4 : 3);
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.chip(this, card, SetupPermissions.unrestricted(this)
-                ? "✓ Battery optimization exemption detected" : "○ Check battery settings");
-        UiKit.button(this, card, "Open app battery settings", true, () ->
-                SetupPermissions.openBatterySettings(this));
-        UiKit.description(this, card,
-                "Open Battery → choose Unrestricted (if offered), then return here.");
+        TextView title = UiKit.heading(this, card, "Set battery use to Unrestricted");
+        title.setTextSize(23);
+        TextView intro = UiKit.text(this,
+                "Android may pause background processing to save battery. Follow these steps:",
+                17, UiKit.INK, false);
+        intro.setPadding(0, UiKit.dp(this, 12), 0, UiKit.dp(this, 8));
+        card.addView(intro);
+        TextView status = UiKit.chip(this, card, SetupPermissions.unrestricted(this)
+                ? "✓ Battery optimization exemption detected"
+                : "○ Battery optimization exemption not detected");
+        status.setTextSize(15);
+
+        batteryStep(card, "1. Tap the button below to open TextSentry settings.");
+        android.widget.Button settings = UiKit.button(this, card,
+                "Open TextSentry app settings", true,
+                () -> SetupPermissions.openBatterySettings(this));
+        settings.setTextSize(16);
+        batteryStep(card, "2. In App info, tap App battery usage (or Battery).");
+        batteryStep(card, "3. Select Unrestricted, not Optimized or Restricted.");
+        batteryStep(card, "4. Return to TextSentry to check the updated status.");
+
         UiKit.button(this, root, "Continue to start monitoring", false, () -> {
             SetupFlow.advance(this, SetupFlow.ACTIVATE);
             display();
         });
-        TextView note = UiKit.description(this, root,
-                "Optional for better reliability. Does not grant SMS access.");
-        note.setTextSize(12);
+        TextView note = UiKit.text(this,
+                "Optional: this does not grant SMS access and may use more battery.",
+                14, UiKit.MUTED, false);
+        note.setPadding(0, UiKit.dp(this, 10), 0, UiKit.dp(this, 8));
+        root.addView(note);
+    }
+
+    /** Large, high-contrast instructions remain readable without changing other wizard steps. */
+    private void batteryStep(LinearLayout parent, String instruction) {
+        TextView step = UiKit.text(this, instruction, 18, UiKit.INK, false);
+        step.setBackground(UiKit.shape(UiKit.HIGHLIGHT, UiKit.dp(this, 12), 0));
+        step.setPadding(UiKit.dp(this, 14), UiKit.dp(this, 14),
+                UiKit.dp(this, 14), UiKit.dp(this, 14));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = UiKit.dp(this, 12);
+        parent.addView(step, params);
     }
 
     private void renderActivation() {
