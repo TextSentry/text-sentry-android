@@ -12,22 +12,19 @@ public class MmsInboxPolicyTest {
         assertTrue(MmsInboxPolicy.isNewInboxMessage(1_800_000_001L, enabledAt, true));
     }
 
-    @Test public void combinesActualMmsTextSubjectAndLocalImageOcr() {
-        assertEquals("Election Day Tuesday\nVote Example Candidate for Senate\nPaid for by committee",
+    @Test public void combinesOnlyActualMmsTextAndSubject() {
+        assertEquals("Election Day Tuesday\nVote Example Candidate for Senate",
                 MmsInboxPolicy.combineText("Election Day Tuesday",
-                        Arrays.asList("Vote Example Candidate for Senate"),
-                        Arrays.asList("Paid for by committee")));
+                        Arrays.asList("Vote Example Candidate for Senate")));
     }
 
     @Test public void skipsBlankMmsRatherThanSendingImagesToTextOnlyModel() {
-        assertEquals("", MmsInboxPolicy.combineText(null, Arrays.asList(" ", ""),
-                Arrays.asList("", "  ")));
+        assertEquals("", MmsInboxPolicy.combineText(null, Arrays.asList(" ", "")));
     }
 
     @Test public void truncatesTextsToProviderMaximumWithoutRepeatingParts() {
         String large = "X".repeat(2000);
-        String text = MmsInboxPolicy.combineText("", Arrays.asList(large,large),
-                Arrays.asList(large));
+        String text = MmsInboxPolicy.combineText("", Arrays.asList(large,large));
         assertEquals(1600,text.length());
         assertEquals(large.substring(0,1600),text);
     }
