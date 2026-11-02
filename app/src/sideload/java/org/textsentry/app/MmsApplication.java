@@ -16,6 +16,7 @@ public final class MmsApplication extends Application {
         super.onCreate();
         refreshObserver();
         MmsScanWorker.sync(this);
+        GitHubUpdateWorker.schedule(this);
     }
 
     synchronized void refreshObserver() {

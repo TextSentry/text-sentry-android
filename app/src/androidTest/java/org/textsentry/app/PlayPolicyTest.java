@@ -36,6 +36,19 @@ public class PlayPolicyTest {
         }
     }
 
+    @Test public void githubUpdateWorkerExistsOnlyInSideloadVariant() throws Exception {
+        if ("play".equals(BuildConfig.FLAVOR)) {
+            try {
+                Class.forName("org.textsentry.app.GitHubUpdateWorker");
+                fail("The Play APK must not include GitHub sideload update polling");
+            } catch (ClassNotFoundException expected) {
+                // No updater or background GitHub polling in Play.
+            }
+        } else {
+            assertNotNull(Class.forName("org.textsentry.app.GitHubUpdateWorker"));
+        }
+    }
+
     @Test public void localDataDeletionResetsConsentAndApiKey() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         Settings settings = new Settings(context);

@@ -28,6 +28,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (!SetupGate.enforce(this)) return;
         showHome();
+        GitHubUpdates.checkOnOpen(this);
     }
 
     private void showHome() {
@@ -107,6 +108,15 @@ public final class MainActivity extends Activity {
                         .show();
             }
         });
+
+        LinearLayout updates = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.heading(this, updates, "App updates");
+        UiKit.description(this, updates, "Installed version " + BuildConfig.VERSION_NAME
+                + " (build code " + BuildConfig.VERSION_CODE + "). "
+                + "Checks GitHub for signed sideload updates daily; "
+                + "you choose when to download and install.");
+        UiKit.button(this, updates, "Check for updates", false,
+                () -> GitHubUpdates.checkNow(this));
 
         LinearLayout navigate = UiKit.card(this, root, 0xFFFFFFFF);
         UiKit.button(this, navigate, "History", false, () ->
