@@ -14,10 +14,14 @@ import android.widget.TextView;
 public final class SetupActivity extends Activity {
     private boolean openingSettings;
     private boolean showingOwnKey;
+    private boolean subscriptionOpened;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (state != null) showingOwnKey = state.getBoolean("show_own_key", false);
+        if (state != null) {
+            showingOwnKey = state.getBoolean("show_own_key", false);
+            subscriptionOpened = state.getBoolean("subscription_opened", false);
+        }
         display();
     }
 
@@ -28,6 +32,7 @@ public final class SetupActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putBoolean("show_own_key", showingOwnKey);
+        out.putBoolean("subscription_opened", subscriptionOpened);
         super.onSaveInstanceState(out);
     }
 
@@ -47,7 +52,14 @@ public final class SetupActivity extends Activity {
         } else if (!SetupFlow.readyForSettings(
                 new AuthSessionStore(this).hasSession(), new KeyVault(this).hasKey(),
                 "sideload".equals(BuildConfig.FLAVOR), SetupFlow.subscriptionPromptSeen(this))) {
-            renderSubscription();
+            // Open the one-action checkout screen immediately after Google login.
+            // If the user backs out, show a simple way to resume, not a loop.
+            if (BuildConfig.WEB_CHECKOUT_ENABLED && !subscriptionOpened) {
+                subscriptionOpened = true;
+                startActivity(SubscriptionOnboarding.continueSetupIntent(this));
+            } else {
+                renderSubscription();
+            }
         } else {
             // No monitoring or SMS replies are enabled by finishing onboarding.
             SetupFlow.complete(this);
