@@ -48,6 +48,24 @@ public class HistoryStoreTest {
         history.clear();
     }
 
+    @Test public void monitoredMmsDecisionsAreKeystoreEncryptedAndNotClaimedDeleted() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        HistoryStore history = new HistoryStore(app);
+        history.clear();
+        try {
+            history.add("+15555550123", "Vote Candidate for Senate", 0.97,
+                    "", "blocked", "mms");
+            assertEquals("mms", history.list().get(0).source);
+            assertEquals("Not deleted by TextSentry", history.list().get(0).deletionStatus());
+            String ciphertext = app.getSharedPreferences(
+                    "textsentry_message_history", Context.MODE_PRIVATE)
+                    .getString("encrypted_records", "");
+            assertFalse(ciphertext.contains("Vote Candidate"));
+        } finally {
+            history.clear();
+        }
+    }
+
     @Test public void boundedRetentionAndFullDataErase() throws Exception {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         HistoryStore history = new HistoryStore(app);
