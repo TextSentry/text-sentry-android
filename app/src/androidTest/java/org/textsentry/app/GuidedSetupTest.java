@@ -40,6 +40,7 @@ public class GuidedSetupTest {
         // Sideload managed accounts must complete verified subscription handoff.
         assertFalse(SetupFlow.readyForSettings(false, false, true, false));
         assertFalse(SetupFlow.readyForSettings(true, false, true, false));
+        assertFalse(SetupFlow.readyForSettings(true, true, true, false));
         assertTrue(SetupFlow.readyForSettings(true, false, true, true));
         // BYOK keeps its explicit provider-responsibility path.
         assertTrue(SetupFlow.readyForSettings(false, true, true, false));
@@ -63,7 +64,7 @@ public class GuidedSetupTest {
         assertFalse(SetupFlow.shouldPromptSubscription(true, false, true, true));
         assertFalse(SetupFlow.shouldPromptSubscription(true, false, false, false));
         assertFalse(SetupFlow.shouldPromptSubscription(false, true, true, false));
-        assertFalse(SetupFlow.shouldPromptSubscription(true, true, true, false));
+        assertTrue(SetupFlow.shouldPromptSubscription(true, true, true, false));
     }
 
     @Test public void oldSetupProgressMigratesWithoutSkippingSmsInstructions() {
