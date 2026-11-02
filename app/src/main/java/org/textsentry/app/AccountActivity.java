@@ -364,13 +364,13 @@ public final class AccountActivity extends Activity {
                                 authGeneration++;
                                 ManagedKeyMemory.clear();
                                 if (getIntent().getBooleanExtra("welcome", false)) {
-                                    // Return straight to the battery step, without a second
-                                    // account screen. Managed key remains RAM-only.
+                                    // Return to the short subscription flow; key stays RAM-only.
                                     finish();
                                 } else {
                                     render();
                                     refreshSubscription();
-                                    fetchManagedKey();
+                                    // Onboarding must verify entitlement before asking AWS for a key.
+                                    if (!continueSetup) fetchManagedKey();
                                 }
                             }
                         });
