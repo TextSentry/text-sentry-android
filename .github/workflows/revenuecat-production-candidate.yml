@@ -79,7 +79,8 @@ jobs:
           grep -F 'https://pay.rev.cat/mimrlvpobvqnjikw/' app/src/main/java/org/textsentry/app/WebCheckout.java
           grep -F 'startActivity(SubscriptionOnboarding.continueSetupIntent(this))' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'SetupFlow.readyForSettings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'SettingsActivity.class' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'renderPermissions();' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'openApp(MainActivity.class);' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'Subscribe to TextSentry' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'BuildConfig.WEB_CHECKOUT_ENABLED' app/src/main/java/org/textsentry/app/AccountActivity.java
