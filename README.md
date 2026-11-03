@@ -23,13 +23,15 @@ Two distributions are maintained:
 
 ## Guided first-run setup
 
-New users see a short setup flow: **Sign in with Google → Subscribe to TextSentry → Settings**. The subscription opens the hosted RevenueCat checkout; returning from the browser is not proof of payment. TextSentry checks the signed-in account's real entitlement and retrieves the managed OpenRouter key into process RAM before finishing setup. There is no skip-subscription or continue-without-a-key button for managed access. Subscription checkout is available in signed sideload builds with checkout enabled, not in the Play flavor.
+**Experimental sideload Android:** **Sign in with Google → Subscribe → Permissions → Home**. First-run users sign in with Google; the RevenueCat checkout step verifies a live subscription and retrieves a managed key into process RAM. Returning from a browser checkout alone is never proof of payment. Only verified access advances to the permissions screen.
 
-**Bring your own key:** The small TypeSafe API-key link on the first screen offers an alternative without registration or a TextSentry subscription. The user must first accept the provider responsibility/retention notice. A saved key opens **Settings** directly. Signing in with Google does not silently switch to BYOK if managed access fails.
+The **Permissions** screen requests incoming SMS permission for monitoring. If Android blocks restricted SMS access, a link opens Android app settings and users can explicitly **Continue without monitoring**. When SMS access is granted, a short optional battery guide recommends **App battery usage → Unrestricted**; it is not a prerequisite. Select **Continue to TextSentry** to open the main page. The main page displays **Start Monitoring**, which enables preview-only monitoring; STOP replies stay disabled until separately enabled. MMS access is still a separate opt-in on Home.
 
-**Permissions after setup:** SMS, MMS, automatic replies, and battery-optimization settings are not part of the first-run wizard. The experimental sideload Settings page provides SMS access and a readable **Unrestricted** battery guide; Home handles preview monitoring, optional SMS replies, and separate MMS consent. Monitoring and automatic replies remain **off by default**. Play stays manual-only without restricted SMS permissions. The battery exemption is optional and does not grant SMS permissions.
+**Bring your own key:** Choosing the TypeSafe BYOK alternative requires the provider responsibility/retention acknowledgment; a stored personal key skips managed subscription but still leads through **Permissions → Home**.
 
-Existing installations retain their encrypted credentials, local history, settings and monitoring choices. Google-managed sideload users upgrading with an outstanding subscription handoff are asked to verify their subscription once; they are not forced through the old permission wizard. A new sign-in cannot reuse a previous account's completed checkout handoff. Shared text remains available when onboarding was launched from the Play share target.
+**Play edition:** No hosted subscription checkout or restricted SMS permissions are available; after Google sign-in or BYOK setup, users enter the manual-only main page. The Play build never requests SMS monitoring access.
+
+Existing completed installations keep their choices and message history. Sideload users who finished the earlier onboarding without incoming SMS access receive the permission guide once on launch; they can continue safely if Android's installer restrictions prevent permission granting. Already configured users with incoming SMS permission are not interrupted.
 
 ## App experience
 

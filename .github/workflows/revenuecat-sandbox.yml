@@ -84,7 +84,8 @@ jobs:
           grep -F 'RevenueCat customer ID' app/src/main/java/org/textsentry/app/AccountActivity.java
           grep -F 'startActivity(SubscriptionOnboarding.continueSetupIntent(this))' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'SetupFlow.readyForSettings' app/src/main/java/org/textsentry/app/SetupActivity.java
-          grep -F 'SettingsActivity.class' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'renderPermissions();' app/src/main/java/org/textsentry/app/SetupActivity.java
+          grep -F 'openApp(MainActivity.class);' app/src/main/java/org/textsentry/app/SetupActivity.java
           grep -F 'continueSetup' app/src/main/java/org/textsentry/app/AccountActivity.java
 
       - name: Upload short-lived private test artifact (never a GitHub Release)

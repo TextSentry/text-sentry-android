@@ -44,7 +44,7 @@ public final class MainActivity extends Activity {
         UiKit.chip(this, overview, state + " · " + settings.confidence() + "% match");
         UiKit.description(this, overview, AnalysisAccess.status(this));
         if (!settings.monitoring()) {
-            UiKit.button(this, overview, "Start preview", true, this::startPreview);
+            UiKit.button(this, overview, "Start Monitoring", true, this::startMonitoring);
         } else {
             UiKit.button(this, overview, "Pause", true, () -> {
                 settings.pause();
@@ -184,7 +184,7 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
-    private void startPreview() {
+    private void startMonitoring() {
         if (!AnalysisAccess.hasProvider(this)) {
             Toast.makeText(this, "Sign in or add your own key first", Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, AccountActivity.class));

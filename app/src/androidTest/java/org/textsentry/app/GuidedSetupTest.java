@@ -36,6 +36,33 @@ public class GuidedSetupTest {
         assertEquals(SetupFlow.LOGIN, SetupFlow.validatedStage(SetupFlow.ACTIVATE, false));
     }
 
+    @Test public void sideloadPermissionsMustFollowSubscriptionBeforeHome() {
+        // A verified subscription unlocks the permission step, not Home.
+        assertTrue(SetupFlow.shouldShowPermissions(true, false, false, false));
+        assertTrue(SetupFlow.shouldShowPermissions(true, false, false, true));
+        assertTrue(SetupFlow.shouldShowPermissions(true, true, false, false));
+        assertFalse(SetupFlow.shouldShowPermissions(true, true, false, true));
+        // Once the guidance is acknowledged, never force a loop on denied access.
+        assertFalse(SetupFlow.shouldShowPermissions(true, false, true, false));
+        assertFalse(SetupFlow.shouldShowPermissions(true, true, true, false));
+        // The Play flavor never requests restricted SMS permissions.
+        assertFalse(SetupFlow.shouldShowPermissions(false, false, false, false));
+    }
+
+    @Test public void permissionStepAcknowledgementIsSeparateFromSubscriptionAndCompletion() {
+        Context context = app();
+        SetupFlow.reset(context);
+        SetupFlow.completeSubscriptionPrompt(context);
+        assertTrue(SetupFlow.subscriptionPromptSeen(context));
+        assertFalse(SetupFlow.permissionsStepSeen(context));
+        assertFalse(SetupFlow.isComplete(context));
+        SetupFlow.completePermissionsStep(context);
+        assertTrue(SetupFlow.permissionsStepSeen(context));
+        assertFalse(SetupFlow.isComplete(context));
+        SetupFlow.reset(context);
+        assertFalse(SetupFlow.permissionsStepSeen(context));
+    }
+
     @Test public void newUsersOnlyEnterSettingsAfterRequiredAccessIsReady() {
         // Sideload managed accounts must complete verified subscription handoff.
         assertFalse(SetupFlow.readyForSettings(false, false, true, false));

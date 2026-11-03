@@ -14,7 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** Regression: first-run has no permission wizard; guidance lives in Settings. */
+/** Regression: sign-in/subscription → permission guidance → Home, including BYOK. */
 @RunWith(AndroidJUnit4.class)
 public class SmsPermissionWizardTest {
     private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -50,7 +50,8 @@ public class SmsPermissionWizardTest {
         }
     }
 
-    @Test public void byokCompletesWithoutOpeningPermissionWizard() throws Exception {
+    @Test public void byokOpensPermissionStepAndOnlyFinishesAfterContinue()
+            throws Exception {
         new AuthSessionStore(context).clear();
         SetupFlow.reset(context);
         KeyVault key = new KeyVault(context);
@@ -60,11 +61,74 @@ public class SmsPermissionWizardTest {
             activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
                     new Intent(context, SetupActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Allow SMS access."));
+            assertFalse(SetupFlow.isComplete(context));
+            if (SetupPermissions.hasIncoming(activity)) {
+                assertTrue(contains(root, "Continue to TextSentry"));
+            } else {
+                assertTrue(contains(root, "Allow incoming SMS"));
+                assertTrue(contains(root, "Continue without monitoring"));
+            }
+            final View action = SetupPermissions.hasIncoming(activity)
+                    ? findText(root, "Continue to TextSentry")
+                    : findText(root, "Continue without monitoring");
+            assertNotNull(action);
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(action::performClick);
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            assertTrue(SetupFlow.permissionsStepSeen(context));
             assertTrue(SetupFlow.isComplete(context));
             assertTrue(SetupGate.canEnterApp(context));
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
+            key.clear();
+            SetupFlow.reset(context);
+        }
+    }
+
+    @Test public void verifiedManagedAccountGoesToPermissionsNotHome() throws Exception {
+        new AuthSessionStore(context).clear();
+        context.getSharedPreferences("textsentry_auth_session", Context.MODE_PRIVATE)
+                .edit().putString("state", "screen-only-test-session").commit();
+        new KeyVault(context).clear();
+        SetupFlow.reset(context);
+        SetupFlow.completeSubscriptionPrompt(context);
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, SetupActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            assertFalse(SetupFlow.isComplete(context));
+            assertTrue(contains(activity.getWindow().getDecorView(), "Allow SMS access."));
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            new AuthSessionStore(context).clear();
+            SetupFlow.reset(context);
+        }
+    }
+
+    @Test public void homeCallsPreviewOnlyActionStartMonitoring() throws Exception {
+        new AuthSessionStore(context).clear();
+        SetupFlow.reset(context);
+        KeyVault key = new KeyVault(context);
+        key.save("synthetic-home-button-key");
+        SetupFlow.completePermissionsStep(context);
+        SetupFlow.complete(context);
+        new Settings(context).pause();
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Start Monitoring"));
+            assertFalse(contains(root, "Start preview"));
+            assertFalse(new Settings(context).monitoring());
+            assertFalse(new Settings(context).autoSend());
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            new Settings(context).pause();
             key.clear();
             SetupFlow.reset(context);
         }
