@@ -21,7 +21,7 @@ public class HistoryReviewEmailTest {
         HistoryStore history = new HistoryStore(app);
         history.clear();
         try {
-            history.add("+15550001234", "You got a crew sticker they didn't have here",
+            history.add("+15550001234", "Are you bringing the board game tonight?",
                     0.07, "", "no_reply", "mms");
             Intent intent = HistoryReviewEmail.createIntent(history.list().get(0));
             assertEquals(Intent.ACTION_SENDTO, intent.getAction());
@@ -30,7 +30,7 @@ public class HistoryReviewEmailTest {
                     intent.getStringExtra(Intent.EXTRA_SUBJECT));
             String body = intent.getStringExtra(Intent.EXTRA_TEXT);
             assertNotNull(body);
-            assertTrue(body.contains("You got a crew sticker they didn't have here"));
+            assertTrue(body.contains("Are you bringing the board game tonight?"));
             assertTrue(body.contains("Jev decision: No match"));
             assertTrue(body.contains("Jev match probability: 7%"));
             assertTrue(body.contains("Message type: MMS"));
