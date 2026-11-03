@@ -66,24 +66,40 @@ public class SettingsSafetyTest {
         assertEquals("", next.effectivePrompt());
     }
 
-    @Test public void mmsIsOffByDefaultAndOptInIsNotRetroactive() {
+    @Test public void startingMonitoringEnablesNewSmsAndMmsTogetherAndPauseResetsBoth() {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         app.deleteSharedPreferences("textsentry_settings");
         Settings settings = new Settings(app);
+        assertFalse(settings.monitoring());
         assertFalse(settings.mmsEnabled());
         assertEquals(0, settings.mmsSinceMs());
         String initialGeneration = settings.generation();
         long before = System.currentTimeMillis();
-        settings.setMmsMonitoring(true);
+
+        settings.startMonitoring();
+        assertTrue(settings.monitoring());
         assertTrue(settings.mmsEnabled());
+        assertFalse(settings.autoSend());
         assertTrue(settings.mmsSinceMs() >= before);
         assertNotEquals(initialGeneration, settings.generation());
         long since = settings.mmsSinceMs();
-        settings.setMmsMonitoring(true);
+
+        // Enabling auto-replies must remain independent and must not reset MMS history.
+        settings.setAutomation(true, true);
+        assertTrue(settings.autoSend());
+        assertTrue(settings.mmsEnabled());
         assertEquals(since, settings.mmsSinceMs());
-        settings.setMmsMonitoring(false);
+
+        settings.pause();
+        assertFalse(settings.monitoring());
+        assertFalse(settings.autoSend());
         assertFalse(settings.mmsEnabled());
         assertEquals(0, settings.mmsSinceMs());
+
+        settings.startMonitoring();
+        assertTrue(settings.mmsSinceMs() >= since);
+        assertTrue(settings.mmsEnabled());
+        assertFalse(settings.autoSend());
     }
 
     @Test public void savingAndPausingInvalidateAlreadyQueuedMessages() {

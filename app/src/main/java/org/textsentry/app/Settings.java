@@ -57,18 +57,18 @@ public final class Settings {
     }
     public boolean monitoring() { return prefs.getBoolean("monitor", false); }
     public boolean autoSend() { return prefs.getBoolean("auto_send", false); }
-    /** Disabled until a separate explicit MMS inbox-read consent is recorded. */
+    /** Text-only MMS scanning shares the Start Monitoring opt-in, not a second toggle. */
     public boolean mmsEnabled() { return prefs.getBoolean("mms_monitor", false); }
     public long mmsSinceMs() { return prefs.getLong("mms_since", 0L); }
 
-    public void setMmsMonitoring(boolean enabled) {
-        long since = enabled
-                ? (mmsEnabled() ? mmsSinceMs() : System.currentTimeMillis())
-                : 0L;
-        if (!prefs.edit().putBoolean("mms_monitor", enabled)
-                .putLong("mms_since", since)
+    /** One explicit action starts new SMS and text-only MMS monitoring in preview mode. */
+    public void startMonitoring() {
+        if (!prefs.edit().putBoolean("monitor", true)
+                .putBoolean("auto_send", false)
+                .putBoolean("mms_monitor", true)
+                .putLong("mms_since", System.currentTimeMillis())
                 .putString("generation", UUID.randomUUID().toString()).commit()) {
-            throw new IllegalStateException("Could not save MMS consent");
+            throw new IllegalStateException("Could not start monitoring");
         }
     }
 
@@ -114,9 +114,15 @@ public final class Settings {
 
     /** Remains distinct from policy saves so toggling monitoring cannot change the AI model. */
     public void setAutomation(boolean monitor, boolean send) {
-        prefs.edit().putBoolean("monitor", monitor)
+        SharedPreferences.Editor edit = prefs.edit()
+                .putBoolean("monitor", monitor)
                 .putBoolean("auto_send", monitor && send)
-                .putString("generation", UUID.randomUUID().toString()).commit();
+                .putString("generation", UUID.randomUUID().toString());
+        if (!monitor) {
+            // Pausing also ends MMS consent and prevents scanning while monitoring was off.
+            edit.putBoolean("mms_monitor", false).putLong("mms_since", 0L);
+        }
+        edit.commit();
     }
 
     public void pause() { setAutomation(false, false); }
