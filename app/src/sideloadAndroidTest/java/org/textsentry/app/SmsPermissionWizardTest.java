@@ -195,6 +195,9 @@ public class SmsPermissionWizardTest {
             View root = activity.getWindow().getDecorView();
             assertTrue(contains(root, "Start Monitoring"));
             assertFalse(contains(root, "Start preview"));
+            assertFalse(contains(root, "Automatic picture-message filtering"));
+            assertFalse(contains(root, "Enable automatic MMS filtering"));
+            assertFalse(contains(root, "Turn off MMS filtering"));
             assertFalse(new Settings(context).monitoring());
             assertFalse(new Settings(context).autoSend());
         } finally {
