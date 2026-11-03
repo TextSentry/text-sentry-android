@@ -16,24 +16,35 @@ public final class SetupActivity extends Activity {
     private boolean openingHome;
     private boolean showingOwnKey;
     private boolean subscriptionOpened;
+    private SmsPermissionStep smsPermissionStep = new SmsPermissionStep();
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null) {
             showingOwnKey = state.getBoolean("show_own_key", false);
             subscriptionOpened = state.getBoolean("subscription_opened", false);
+            smsPermissionStep = new SmsPermissionStep(
+                    state.getBoolean("sms_attempted", false),
+                    state.getBoolean("sms_settings_opened", false));
         }
         display();
     }
 
     @Override protected void onResume() {
         super.onResume();
+        // Only retry once, after the user returns from Android App info.
+        if (SetupPermissions.supportsMonitoring()
+                && smsPermissionStep.retryAfterSettings(SetupPermissions.hasIncoming(this))) {
+            requestIncomingSms();
+        }
         display();
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putBoolean("show_own_key", showingOwnKey);
         out.putBoolean("subscription_opened", subscriptionOpened);
+        out.putBoolean("sms_attempted", smsPermissionStep.attempted());
+        out.putBoolean("sms_settings_opened", smsPermissionStep.awaitingSettingsReturn());
         super.onSaveInstanceState(out);
     }
 
@@ -180,13 +191,15 @@ public final class SetupActivity extends Activity {
         UiKit.chip(this, card, allowed
                 ? "✓ Incoming SMS allowed" : "○ Incoming SMS not allowed");
         if (!allowed) {
-            UiKit.button(this, card, "Allow incoming SMS", true,
-                    () -> SetupPermissions.requestIncoming(this, RECEIVE_SMS_REQUEST));
-            UiKit.description(this, card,
-                    "Some Android sideload installations restrict SMS permission. "
-                            + "If the request is blocked, check TextSentry's app permissions.");
-            smallLink(card, "Open Android app settings",
-                    () -> SetupPermissions.openAppSettings(this));
+            if (smsPermissionStep.showAppSettings(false)) {
+                SmsPermissionGuideUi.show(this, card);
+                UiKit.button(this, card, "Open app settings", true, () -> {
+                    smsPermissionStep.settingsOpened();
+                    SetupPermissions.openAppSettings(this);
+                });
+            } else {
+                UiKit.button(this, card, "Allow incoming SMS", true, this::requestIncomingSms);
+            }
             smallLink(root, "Continue without monitoring", this::finishPermissions);
         } else {
             UiKit.heading(this, card, "Keep monitoring reliable");
@@ -221,10 +234,20 @@ public final class SetupActivity extends Activity {
         openApp(MainActivity.class);
     }
 
+    private void requestIncomingSms() {
+        smsPermissionStep.permissionRequested();
+        SetupPermissions.requestIncoming(this, RECEIVE_SMS_REQUEST);
+        // Also update when Android refuses to show any permission dialog.
+        display();
+    }
+
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
                                                      int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == RECEIVE_SMS_REQUEST) display();
+        if (requestCode == RECEIVE_SMS_REQUEST) {
+            smsPermissionStep.permissionRequested();
+            display();
+        }
     }
 
     private void smallLink(LinearLayout parent, String label, Runnable action) {
