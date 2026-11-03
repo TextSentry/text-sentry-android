@@ -14,6 +14,35 @@ public class ManagedKeyClientTest {
         assertFalse(key.status().contains("synthetic-key-not-real"));
     }
 
+    @Test public void supportsCurrentAndLegacyCapsAndReportsActualLimit() {
+        for (String[] supported : new String[][] {
+                {"0.9", "$0.90/month"}, {"1", "$1.00/month"}, {"1.0", "$1.00/month"}
+        }) {
+            String json = "{\"key\":\"synthetic-managed-key\",\"period\":\"2099-11\","
+                    + "\"expires_at\":\"2099-12-01T00:00:00Z\","
+                    + "\"monthly_limit_usd\":" + supported[0] + "}";
+            ManagedKeyClient.KeyResponse response = ManagedKeyClient.parse(json);
+            assertTrue(response.status().contains(supported[1]));
+            assertFalse(response.status().contains(response.key));
+        }
+    }
+
+    @Test public void rejectsMalformedOrUnsupportedCaps() {
+        for (String invalid : new String[] {
+                "0", "-1", "0.89", "0.91", "1.01", "5", "null", "\"0.9\""
+        }) {
+            String json = "{\"key\":\"synthetic-managed-key\",\"period\":\"2099-11\","
+                    + "\"expires_at\":\"2099-12-01T00:00:00Z\","
+                    + "\"monthly_limit_usd\":" + invalid + "}";
+            try {
+                ManagedKeyClient.parse(json);
+                fail("Unsupported or malformed monthly limit accepted: " + invalid);
+            } catch (IllegalArgumentException expected) {
+                // Must not leak the key in errors.
+            }
+        }
+    }
+
     @Test public void revokedKeyErrorIsNotConfusedWithSubscriptionOrMonthlySpend() {
         assertEquals("This month's managed key was revoked and cannot be reissued until next month.",
                 ManagedKeyClient.failureMessage(429,
