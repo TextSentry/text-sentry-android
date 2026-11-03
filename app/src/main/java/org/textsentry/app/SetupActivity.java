@@ -9,10 +9,11 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** First run: sign in or BYOK, verify managed subscription, then open Settings.
- * SMS and background permissions are configured later, never silently requested. */
+/** First run: sign in or BYOK, verify managed subscription, review SMS permissions,
+ * then open Home. No permissions or monitoring are enabled without user action. */
 public final class SetupActivity extends Activity {
-    private boolean openingSettings;
+    private static final int RECEIVE_SMS_REQUEST = 301;
+    private boolean openingHome;
     private boolean showingOwnKey;
     private boolean subscriptionOpened;
 
@@ -37,13 +38,15 @@ public final class SetupActivity extends Activity {
     }
 
     private void display() {
-        if (isFinishing() || openingSettings) return;
+        if (isFinishing() || openingHome) return;
         boolean complete = SetupGate.canEnterApp(this);
         boolean needsBilling = SetupFlow.needsSubscriptionPrompt(this);
+        boolean needsPermissions = SetupFlow.needsPermissionsStep(this,
+                SetupPermissions.supportsMonitoring(), SetupPermissions.hasIncoming(this));
         // An existing installation goes to Home unchanged unless it still owes
         // the one-time verified checkout for a Google-managed sideload account.
-        if (SetupFlow.shouldReturnHome(complete, BuildConfig.WEB_CHECKOUT_ENABLED,
-                needsBilling)) {
+        if (!needsPermissions && SetupFlow.shouldReturnHome(complete,
+                BuildConfig.WEB_CHECKOUT_ENABLED, needsBilling)) {
             openApp(MainActivity.class);
             return;
         }
@@ -60,21 +63,19 @@ public final class SetupActivity extends Activity {
             } else {
                 renderSubscription();
             }
+        } else if (needsPermissions) {
+            renderPermissions();
         } else {
-            // First run starts paused, regardless of any stale saved automation state.
-            // Existing installations keep their explicit monitoring preference.
+            // Play's manual-only flavor requires no restricted SMS permissions.
             if (!SetupFlow.isComplete(this)) new Settings(this).pause();
             SetupFlow.complete(this);
-            // Keep an incoming Play share intent when one started the setup flow.
-            String shared = getIntent().getStringExtra(Intent.EXTRA_TEXT);
-            openApp(shared != null && !shared.isEmpty()
-                    ? MainActivity.class : SettingsActivity.class);
+            openApp(MainActivity.class);
         }
     }
 
     private void openApp(Class<?> destination) {
-        if (openingSettings || isFinishing()) return;
-        openingSettings = true;
+        if (openingHome || isFinishing()) return;
+        openingHome = true;
         Intent next = new Intent(this, destination)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         String shared = getIntent().getStringExtra(Intent.EXTRA_TEXT);
@@ -82,13 +83,7 @@ public final class SetupActivity extends Activity {
             next.setAction(Intent.ACTION_SEND).setType("text/plain");
             next.putExtra(Intent.EXTRA_TEXT, shared);
         }
-        if (destination == SettingsActivity.class) {
-            // Settings is the first screen, but Home remains underneath it so
-            // the back arrow returns to protection controls instead of exiting.
-            startActivities(new Intent[]{new Intent(this, MainActivity.class), next});
-        } else {
-            startActivity(next);
-        }
+        startActivity(next);
         finish();
     }
 
@@ -173,6 +168,63 @@ public final class SetupActivity extends Activity {
             showingOwnKey = false;
             display();
         });
+    }
+
+    /** One focused permission step. Sending STOP and MMS inbox access remain
+     * opt-in on Home; a blocked installer permission cannot trap onboarding. */
+    private void renderPermissions() {
+        LinearLayout root = stage("PERMISSIONS", "Allow SMS access.",
+                "TextSentry needs incoming SMS permission to monitor messages.");
+        LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
+        boolean allowed = SetupPermissions.hasIncoming(this);
+        UiKit.chip(this, card, allowed
+                ? "✓ Incoming SMS allowed" : "○ Incoming SMS not allowed");
+        if (!allowed) {
+            UiKit.button(this, card, "Allow incoming SMS", true,
+                    () -> SetupPermissions.requestIncoming(this, RECEIVE_SMS_REQUEST));
+            UiKit.description(this, card,
+                    "Some Android sideload installations restrict SMS permission. "
+                            + "If the request is blocked, check TextSentry's app permissions.");
+            smallLink(card, "Open Android app settings",
+                    () -> SetupPermissions.openAppSettings(this));
+            smallLink(root, "Continue without monitoring", this::finishPermissions);
+        } else {
+            UiKit.heading(this, card, "Keep monitoring reliable");
+            UiKit.description(this, card,
+                    "Recommended: Open App battery usage (or Battery) and select "
+                            + "Unrestricted. This is optional and may use more battery.");
+            if (!SetupPermissions.unrestricted(this)) {
+                UiKit.button(this, card, "Open battery settings", false,
+                        () -> SetupPermissions.openBatterySettings(this));
+            }
+            UiKit.button(this, root, "Continue to TextSentry", true,
+                    this::finishPermissions);
+        }
+        UiKit.description(this, root,
+                "Monitoring starts paused. Automatic STOP replies and MMS require "
+                        + "separate consent on the main page.");
+    }
+
+    private void finishPermissions() {
+        if (!SetupGate.hasAccess(this) || !SetupFlow.readyForSettings(
+                new AuthSessionStore(this).hasSession(), new KeyVault(this).hasKey(),
+                "sideload".equals(BuildConfig.FLAVOR), SetupFlow.subscriptionPromptSeen(this))) {
+            display();
+            return;
+        }
+        // Declining SMS access must never leave stale monitoring or replies on.
+        if (!SetupFlow.isComplete(this) || !SetupPermissions.hasIncoming(this)) {
+            new Settings(this).pause();
+        }
+        SetupFlow.completePermissionsStep(this);
+        SetupFlow.complete(this);
+        openApp(MainActivity.class);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                                     int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == RECEIVE_SMS_REQUEST) display();
     }
 
     private void smallLink(LinearLayout parent, String label, Runnable action) {
