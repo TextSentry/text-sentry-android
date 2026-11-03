@@ -80,15 +80,6 @@ public final class MainActivity extends Activity {
                     () -> PermissionSetup.openAppDetails(this));
         }
 
-        LinearLayout updates = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, updates, "App updates");
-        UiKit.description(this, updates, "Installed version " + BuildConfig.VERSION_NAME
-                + " (build code " + BuildConfig.VERSION_CODE + "). "
-                + "Checks GitHub for signed sideload updates daily; "
-                + "you choose when to download and install.");
-        UiKit.button(this, updates, "Check for updates", false,
-                () -> GitHubUpdates.checkNow(this));
-
         LinearLayout navigate = UiKit.card(this, root, 0xFFFFFFFF);
         UiKit.button(this, navigate, "History", false, () ->
                 startActivity(new Intent(this, HistoryActivity.class)));
@@ -96,6 +87,10 @@ public final class MainActivity extends Activity {
                 startActivity(new Intent(this, SettingsActivity.class)));
         UiKit.button(this, navigate, "Account", false, () ->
                 startActivity(new Intent(this, AccountActivity.class)));
+        UiKit.description(this, navigate, "Version " + BuildConfig.VERSION_NAME
+                + " (build " + BuildConfig.VERSION_CODE + ") · Updates checked daily.");
+        UiKit.button(this, navigate, "Check for updates", false,
+                () -> GitHubUpdates.checkNow(this));
     }
 
     private boolean hasReadPermission() {
