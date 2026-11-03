@@ -15,7 +15,7 @@ import android.widget.Toast;
 public final class MainActivity extends Activity {
     private Settings settings;
     private KeyVault vault;
-    private boolean pendingMmsConsent;
+    private static final int MESSAGE_PERMISSION_REQUEST = 100;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -43,6 +43,10 @@ public final class MainActivity extends Activity {
                 : settings.autoSend() ? "Auto-replies on" : "Previewing";
         UiKit.chip(this, overview, state + " · " + settings.confidence() + "% match");
         UiKit.description(this, overview, AnalysisAccess.status(this));
+        if (settings.monitoring() && !hasReadPermission()) {
+            UiKit.description(this, overview,
+                    "Some messages may be unavailable until Android grants inbox access.");
+        }
         if (!settings.monitoring()) {
             UiKit.button(this, overview, "Start Monitoring", true, this::startMonitoring);
         } else {
@@ -76,39 +80,6 @@ public final class MainActivity extends Activity {
                     () -> PermissionSetup.openAppDetails(this));
         }
 
-        LinearLayout mms = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, mms, "Automatic picture-message filtering");
-        boolean allowed = checkSelfPermission(Manifest.permission.READ_SMS)
-                == PackageManager.PERMISSION_GRANTED;
-        UiKit.chip(this, mms, settings.mmsEnabled()
-                ? allowed ? "MMS enabled" : "MMS needs inbox permission"
-                : "MMS off");
-        UiKit.description(this, mms,
-                "Experimental sideload only. Reads new MMS after your messaging app "
-                + "downloads them. MMS text and subject are classified automatically; "
-                + "image-only messages cannot be classified. Android restricts inbox access.");
-        UiKit.button(this, mms, settings.mmsEnabled() ? "Turn off MMS filtering"
-                : "Enable automatic MMS filtering", false, () -> {
-            if (settings.mmsEnabled()) {
-                settings.setMmsMonitoring(false);
-                MmsScanWorker.sync(this);
-                showHome();
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle("Allow automatic MMS analysis?")
-                        .setMessage("TextSentry will read only newly downloaded MMS from "
-                                + "Android's message store and send extracted text "
-                                + "to your selected AI provider. Images "
-                                + "stay on your device. MMS auto-replies follow your existing "
-                                + "STOP setting, but group MMS replies are always blocked. "
-                                + "Android requires restricted READ_SMS permission; "
-                                + "some installers cannot grant it.")
-                        .setPositiveButton("Continue", (d, w) -> requestMmsPermission())
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            }
-        });
-
         LinearLayout updates = UiKit.card(this, root, 0xFFFFFFFF);
         UiKit.heading(this, updates, "App updates");
         UiKit.description(this, updates, "Installed version " + BuildConfig.VERSION_NAME
@@ -127,41 +98,9 @@ public final class MainActivity extends Activity {
                 startActivity(new Intent(this, AccountActivity.class)));
     }
 
-    private void requestMmsPermission() {
-        if (checkSelfPermission(Manifest.permission.READ_SMS)
-                == PackageManager.PERMISSION_GRANTED) {
-            enableMms();
-            return;
-        }
-        pendingMmsConsent = true;
-        if (!SmsPermissionRequestGuard.run(() ->
-                requestPermissions(new String[]{Manifest.permission.READ_SMS}, 104))) {
-            pendingMmsConsent = false;
-            showMmsPermissionHelp();
-        }
-    }
-
-    private void enableMms() {
-        if (!SetupGate.canEnterApp(this)) return;
-        if (checkSelfPermission(Manifest.permission.READ_SMS)
-                != PackageManager.PERMISSION_GRANTED) {
-            showMmsPermissionHelp();
-            return;
-        }
-        settings.setMmsMonitoring(true);
-        MmsScanWorker.sync(this);
-        showHome();
-    }
-
-    private void showMmsPermissionHelp() {
-        new AlertDialog.Builder(this)
-                .setTitle("MMS inbox permission unavailable")
-                .setMessage("Android requires installer allowlisting for READ_SMS. "
-                        + "Open Android App Info > Permissions to check SMS access. "
-                        + "Restricted Settings alone cannot grant a hard-restricted "
-                        + "permission. SMS monitoring still works independently.")
-                .setPositiveButton("App info", (d, w) -> PermissionSetup.openAppDetails(this))
-                .setNegativeButton("Close", null).show();
+    private boolean hasReadPermission() {
+        return checkSelfPermission(Manifest.permission.READ_SMS)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     private boolean hasReceivePermission() {
@@ -190,11 +129,29 @@ public final class MainActivity extends Activity {
             startActivity(new Intent(this, AccountActivity.class));
             return;
         }
-        if (!hasReceivePermission()) {
-            requestPermissions(new String[]{ Manifest.permission.RECEIVE_SMS }, 100);
+        String[] missing = MonitoringPermissions.missing(
+                hasReceivePermission(), hasReadPermission());
+        if (missing.length > 0) {
+            // One Android permission request covers both message formats, without
+            // a second MMS agreement or an extra Home toggle.
+            if (!SmsPermissionRequestGuard.run(() ->
+                    requestPermissions(missing, MESSAGE_PERMISSION_REQUEST))) {
+                // Restricted READ_SMS may be rejected by the installer. Incoming SMS
+                // monitoring should still start when RECEIVE_SMS is available.
+                finishMonitoringRequest();
+            }
             return;
         }
-        settings.setAutomation(true, false);
+        finishMonitoringRequest();
+    }
+
+    private void finishMonitoringRequest() {
+        if (!hasReceivePermission() || !AnalysisAccess.hasProvider(this)) {
+            showHome();
+            return;
+        }
+        settings.startMonitoring();
+        MmsScanWorker.sync(this);
         showHome();
     }
 
@@ -220,23 +177,20 @@ public final class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
                                                       int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        boolean granted = grantResults.length > 0
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-        if (requestCode == 104) {
-            boolean consented = pendingMmsConsent;
-            pendingMmsConsent = false;
-            if (granted && consented) enableMms();
-            else showMmsPermissionHelp();
+        if (requestCode == MESSAGE_PERMISSION_REQUEST) {
+            // The grant-results array can include two permissions in either state.
+            // Check the actual RECEIVE_SMS grant; READ_SMS denial must not block SMS.
+            finishMonitoringRequest();
             return;
         }
-        if (requestCode == 100 && granted && AnalysisAccess.hasProvider(this)) {
-            settings.setAutomation(true, false);
-        } else if (requestCode == 101 && granted && settings.monitoring()
+        boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        if (requestCode == 101 && granted && settings.monitoring()
                 && hasReceivePermission()) {
             settings.setAutomation(true, true);
         }
         showHome();
-        if (requestCode >= 100 && requestCode <= 103 && !granted) {
+        if (requestCode >= 101 && requestCode <= 103 && !granted) {
             showPermissionHelp();
         }
     }
