@@ -8,7 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Telephony;
 
-/** Register MMS provider observer only after separate explicit opt-in and permission. */
+/** Observe new text-only MMS when user starts unified monitoring and Android allows inbox access. */
 public final class MmsApplication extends Application {
     private ContentObserver observer;
 
@@ -20,7 +20,9 @@ public final class MmsApplication extends Application {
     }
 
     synchronized void refreshObserver() {
-        boolean enabled = new Settings(this).mmsEnabled()
+        Settings settings = new Settings(this);
+        boolean enabled = SetupGate.canEnterApp(this) && settings.monitoring()
+                && settings.mmsEnabled()
                 && checkSelfPermission(Manifest.permission.READ_SMS)
                 == PackageManager.PERMISSION_GRANTED;
         if (!enabled && observer != null) {
