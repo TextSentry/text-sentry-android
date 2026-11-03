@@ -26,10 +26,17 @@ public final class SettingsActivity extends Activity {
     private TextView keyState;
     private int confidence;
     private int developerTaps;
-    private LinearLayout root, developerCard;
+    private LinearLayout root, developerCard, smsPermissionCard;
+    private SmsPermissionStep smsPermissionStep = new SmsPermissionStep();
+    private static final int RECEIVE_SMS_REQUEST = 301;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) {
+            smsPermissionStep = new SmsPermissionStep(
+                    state.getBoolean("sms_attempted", false),
+                    state.getBoolean("sms_settings_opened", false));
+        }
         if (!SetupGate.enforce(this)) return;
         settings = new Settings(this);
         vault = new KeyVault(this);
@@ -125,22 +132,8 @@ public final class SettingsActivity extends Activity {
         if (SetupPermissions.supportsMonitoring()) {
             // Keep Android's restricted-permission and battery guidance accessible
             // after checkout; neither permission is silently granted during setup.
-            LinearLayout permissions = UiKit.card(this, root, 0xFFFFFFFF);
-            UiKit.heading(this, permissions, "SMS access");
-            UiKit.chip(this, permissions, SetupPermissions.hasIncoming(this)
-                    ? "✓ Incoming SMS allowed" : "○ Incoming SMS permission needed");
-            UiKit.description(this, permissions,
-                    "Grant incoming SMS access before starting preview on Home. "
-                            + "Replies remain off unless you explicitly enable them.");
-            if (!SetupPermissions.hasIncoming(this)) {
-                UiKit.button(this, permissions, "Allow incoming SMS", true,
-                        () -> SetupPermissions.requestIncoming(this, 301));
-                UiKit.description(this, permissions,
-                        "If Android blocks the permission, open app settings → "
-                                + "Permissions → SMS. Your installer may restrict SMS access.");
-                UiKit.button(this, permissions, "Open Android app settings", false,
-                        () -> SetupPermissions.openAppSettings(this));
-            }
+            smsPermissionCard = UiKit.card(this, root, 0xFFFFFFFF);
+            renderSmsPermissionCard();
 
             LinearLayout background = UiKit.card(this, root, 0xFFFFFFFF);
             UiKit.heading(this, background, "Background operation");
@@ -210,10 +203,49 @@ public final class SettingsActivity extends Activity {
         card.addView(step, params);
     }
 
+    private void renderSmsPermissionCard() {
+        if (smsPermissionCard == null || isFinishing()) return;
+        smsPermissionCard.removeAllViews();
+        UiKit.heading(this, smsPermissionCard, "SMS access");
+        boolean allowed = SetupPermissions.hasIncoming(this);
+        UiKit.chip(this, smsPermissionCard, allowed
+                ? "✓ Incoming SMS allowed" : "○ Incoming SMS permission needed");
+        UiKit.description(this, smsPermissionCard,
+                "Grant incoming SMS access before starting monitoring on Home. "
+                        + "Replies remain off unless you explicitly enable them.");
+        if (!allowed) {
+            if (smsPermissionStep.showAppSettings(false)) {
+                SmsPermissionGuideUi.show(this, smsPermissionCard);
+                UiKit.button(this, smsPermissionCard, "Open app settings", true, () -> {
+                    smsPermissionStep.settingsOpened();
+                    SetupPermissions.openAppSettings(this);
+                });
+            } else {
+                UiKit.button(this, smsPermissionCard, "Allow incoming SMS", true,
+                        this::requestIncomingSms);
+            }
+        }
+    }
+
+    private void requestIncomingSms() {
+        smsPermissionStep.permissionRequested();
+        SetupPermissions.requestIncoming(this, RECEIVE_SMS_REQUEST);
+        renderSmsPermissionCard();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        out.putBoolean("sms_attempted", smsPermissionStep.attempted());
+        out.putBoolean("sms_settings_opened", smsPermissionStep.awaitingSettingsReturn());
+        super.onSaveInstanceState(out);
+    }
+
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
                                                      int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 301 && !isFinishing()) recreate();
+        if (requestCode == RECEIVE_SMS_REQUEST) {
+            smsPermissionStep.permissionRequested();
+            renderSmsPermissionCard();
+        }
     }
 
     private void manageSubscription() {
@@ -345,6 +377,11 @@ public final class SettingsActivity extends Activity {
         super.onResume();
         if (!SetupGate.enforce(this)) return;
         if (root != null) {
+            if (SetupPermissions.supportsMonitoring()
+                    && smsPermissionStep.retryAfterSettings(SetupPermissions.hasIncoming(this))) {
+                requestIncomingSms();
+            }
+            renderSmsPermissionCard();
             refreshDeveloperCard();
         }
     }
