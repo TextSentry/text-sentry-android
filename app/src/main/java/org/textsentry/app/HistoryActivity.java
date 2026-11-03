@@ -2,8 +2,13 @@ package org.textsentry.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
+import android.widget.TextView;
+import android.widget.Toast;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
@@ -55,7 +60,22 @@ public final class HistoryActivity extends Activity {
             }
             visible++;
             LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
-            UiKit.heading(this, card, item.sender.isEmpty() ? "Manual review" : item.sender);
+            LinearLayout cardHeader = new LinearLayout(this);
+            cardHeader.setOrientation(LinearLayout.HORIZONTAL);
+            cardHeader.setGravity(Gravity.CENTER_VERTICAL);
+            card.addView(cardHeader);
+            TextView sender = UiKit.text(this,
+                    item.sender.isEmpty() ? "Manual review" : item.sender, 19, UiKit.INK, true);
+            cardHeader.addView(sender, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView menuButton = UiKit.text(this, "⋮", 28, UiKit.INK, true);
+            menuButton.setGravity(Gravity.CENTER);
+            menuButton.setBackground(UiKit.shape(UiKit.HIGHLIGHT, UiKit.dp(this, 10), 0));
+            menuButton.setContentDescription("Message options");
+            menuButton.setClickable(true);
+            menuButton.setFocusable(true);
+            cardHeader.addView(menuButton, new LinearLayout.LayoutParams(
+                    UiKit.dp(this, 48), UiKit.dp(this, 48)));
+            menuButton.setOnClickListener(v -> showMessageActions(menuButton, item));
             UiKit.description(this, card,
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                             .format(new Date(item.timestamp)));
@@ -98,7 +118,23 @@ public final class HistoryActivity extends Activity {
                         }).setNegativeButton("Cancel", null).show());
     }
 
-    private static String statusLabel(String value) {
+    private void showMessageActions(TextView anchor, HistoryStore.Entry item) {
+        PopupMenu actions = new PopupMenu(this, anchor);
+        actions.getMenu().add(0, 1, 0, "Send for Review");
+        actions.setOnMenuItemClickListener(option -> {
+            if (option.getItemId() != 1) return false;
+            try {
+                // Opens the user's email app; no SMS or decision is sent by TextSentry.
+                startActivity(HistoryReviewEmail.createIntent(item));
+            } catch (ActivityNotFoundException unavailable) {
+                Toast.makeText(this, "No email app available", Toast.LENGTH_LONG).show();
+            }
+            return true;
+        });
+        actions.show();
+    }
+
+    static String statusLabel(String value) {
         switch (value) {
             case "sent": return "✓ Sent (Android confirmed)";
             case "submitting": return "Submitted · awaiting Android confirmation";
