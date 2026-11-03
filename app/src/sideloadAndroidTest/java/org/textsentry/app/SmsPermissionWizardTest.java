@@ -107,6 +107,77 @@ public class SmsPermissionWizardTest {
         }
     }
 
+    @Test public void deniedSmsRequestSwitchesToReadableAppSettingsGuide() throws Exception {
+        new AuthSessionStore(context).clear();
+        SetupFlow.reset(context);
+        KeyVault key = new KeyVault(context);
+        key.save("synthetic-denied-sms-key");
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, SetupActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            if (SetupPermissions.hasIncoming(activity)) return;
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Allow incoming SMS"));
+            assertFalse(contains(root, "Open app settings"));
+            Activity screen = activity;
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                    screen.onRequestPermissionsResult(301,
+                            new String[]{android.Manifest.permission.RECEIVE_SMS},
+                            new int[]{android.content.pm.PackageManager.PERMISSION_DENIED}));
+            assertTrue(contains(root, "Open app settings"));
+            assertFalse(contains(root, "Allow incoming SMS"));
+            assertFalse(SetupFlow.isComplete(context));
+            for (String instruction : new String[]{
+                    "1. Tap Open app settings below.",
+                    "2. If shown, tap the three-dot menu (top right), then Allow restricted settings.",
+                    "3. Open Permissions → SMS → Allow, if SMS is available.",
+                    "4. Return to TextSentry. We'll ask for SMS permission again."
+            }) {
+                TextView step = findText(root, instruction);
+                assertNotNull("Missing instruction: " + instruction, step);
+                float sp = step.getTextSize() /
+                        context.getResources().getDisplayMetrics().scaledDensity;
+                assertTrue("Unreadable instruction: " + instruction, sp >= 18f);
+            }
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            key.clear();
+            SetupFlow.reset(context);
+        }
+    }
+
+    @Test public void settingsShowsOneSmsRecoveryActionAtATime() throws Exception {
+        new AuthSessionStore(context).clear();
+        SetupFlow.reset(context);
+        KeyVault key = new KeyVault(context);
+        key.save("synthetic-settings-sms-key");
+        SetupFlow.complete(context);
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, SettingsActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            if (SetupPermissions.hasIncoming(activity)) return;
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Allow incoming SMS"));
+            assertFalse(contains(root, "Open app settings"));
+            Activity screen = activity;
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                    screen.onRequestPermissionsResult(301,
+                            new String[]{android.Manifest.permission.RECEIVE_SMS},
+                            new int[]{android.content.pm.PackageManager.PERMISSION_DENIED}));
+            assertFalse(contains(root, "Allow incoming SMS"));
+            assertTrue(contains(root, "Open app settings"));
+            assertTrue(contains(root, "3. Open Permissions → SMS → Allow, if SMS is available."));
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            key.clear();
+            SetupFlow.reset(context);
+        }
+    }
+
     @Test public void homeCallsPreviewOnlyActionStartMonitoring() throws Exception {
         new AuthSessionStore(context).clear();
         SetupFlow.reset(context);
