@@ -107,6 +107,33 @@ public class SmsPermissionWizardTest {
         }
     }
 
+    @Test public void homeCallsPreviewOnlyActionStartMonitoring() throws Exception {
+        new AuthSessionStore(context).clear();
+        SetupFlow.reset(context);
+        KeyVault key = new KeyVault(context);
+        key.save("synthetic-home-button-key");
+        SetupFlow.completePermissionsStep(context);
+        SetupFlow.complete(context);
+        new Settings(context).pause();
+        Activity activity = null;
+        try {
+            activity = InstrumentationRegistry.getInstrumentation().startActivitySync(
+                    new Intent(context, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            View root = activity.getWindow().getDecorView();
+            assertTrue(contains(root, "Start Monitoring"));
+            assertFalse(contains(root, "Start preview"));
+            assertFalse(new Settings(context).monitoring());
+            assertFalse(new Settings(context).autoSend());
+        } finally {
+            if (activity != null) activity.runOnUiThread(activity::finish);
+            new Settings(context).pause();
+            key.clear();
+            SetupFlow.reset(context);
+        }
+    }
+
     @Test public void settingsRetainReadableSmsAndUnrestrictedBatteryGuidance()
             throws Exception {
         new AuthSessionStore(context).clear();
