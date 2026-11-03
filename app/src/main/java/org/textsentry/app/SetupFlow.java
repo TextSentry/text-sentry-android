@@ -16,6 +16,7 @@ final class SetupFlow {
     private static final String DONE = "completed";
     private static final String SUBSCRIPTION_PROMPT_SEEN = "subscription_prompt_seen";
     private static final String SUBSCRIPTION_HANDOFF_PENDING = "subscription_handoff_pending";
+    private static final String PERMISSIONS_STEP_SEEN = "permissions_step_seen";
 
     private SetupFlow() {}
 
@@ -62,6 +63,30 @@ final class SetupFlow {
                 .edit().putInt(STEP, ACTIVATE)
                 .putInt(STEP_VERSION, CURRENT_VERSION)
                 .putBoolean(DONE, true).commit();
+    }
+
+    /** On sideload, the permission screen follows verified access and precedes
+     * first-run Home. Existing configured users only revisit it if SMS access
+     * is still unavailable; an acknowledged denial must not trap them. */
+    static boolean shouldShowPermissions(boolean sideload, boolean setupComplete,
+                                         boolean stepSeen, boolean incomingAllowed) {
+        return sideload && !stepSeen && (!setupComplete || !incomingAllowed);
+    }
+
+    static boolean permissionsStepSeen(Context context) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(PERMISSIONS_STEP_SEEN, false);
+    }
+
+    static boolean needsPermissionsStep(Context context, boolean supportsMonitoring,
+                                        boolean incomingAllowed) {
+        return shouldShowPermissions(supportsMonitoring, isComplete(context),
+                permissionsStepSeen(context), incomingAllowed);
+    }
+
+    static void completePermissionsStep(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(PERMISSIONS_STEP_SEEN, true).commit();
     }
 
     /** Only a verified managed subscription or an explicit personal key unlocks
