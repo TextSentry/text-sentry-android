@@ -21,14 +21,19 @@ final class ManagedKeyClient {
         final String key;
         final String period;
         final long expiresAtMillis;
+        final double monthlyLimitUsd;
 
-        KeyResponse(String key, String period, long expiresAtMillis) {
+        KeyResponse(String key, String period, long expiresAtMillis, double monthlyLimitUsd) {
             this.key = key;
             this.period = period;
             this.expiresAtMillis = expiresAtMillis;
+            this.monthlyLimitUsd = monthlyLimitUsd;
         }
 
-        String status() { return "✓ Managed key ready · $1/month · " + period; }
+        String status() {
+            String budget = monthlyLimitUsd == 0.9 ? "$0.90" : "$1.00";
+            return "✓ Managed key ready · " + budget + "/month · " + period;
+        }
     }
 
     static KeyResponse parse(String json) {
@@ -37,14 +42,19 @@ final class ManagedKeyClient {
             String key = data.getString("key");
             String period = data.getString("period");
             String expiry = data.getString("expires_at");
-            double cap = data.getDouble("monthly_limit_usd");
+            // Only accept numeric limits that the backend currently issues.
+            Object rawCap = data.get("monthly_limit_usd");
+            if (!(rawCap instanceof Number)) {
+                throw new IllegalArgumentException("Invalid managed key response");
+            }
+            double cap = ((Number) rawCap).doubleValue();
             long expiresAtMillis = Instant.parse(expiry).toEpochMilli();
             if (key.isBlank() || key.length() > 512
                     || !period.matches("[0-9]{4}-(0[1-9]|1[0-2])")
-                    || cap != 1.0 || expiresAtMillis <= System.currentTimeMillis()) {
+                    || (cap != 0.9 && cap != 1.0) || expiresAtMillis <= System.currentTimeMillis()) {
                 throw new IllegalArgumentException("Invalid managed key response");
             }
-            return new KeyResponse(key, period, expiresAtMillis);
+            return new KeyResponse(key, period, expiresAtMillis, cap);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid managed key response");
         }
