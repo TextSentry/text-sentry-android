@@ -74,6 +74,13 @@ public final class Settings {
 
     public String generation() { return prefs.getString("generation", "initial-disabled"); }
 
+    /** Exception updates invalidate queued classification jobs without changing monitoring consent. */
+    public void onExceptionsChanged() {
+        if (!prefs.edit().putString("generation", UUID.randomUUID().toString()).commit()) {
+            throw new IllegalStateException("Could not invalidate queued work");
+        }
+    }
+
     /** Hidden diagnostics are an explicit, persistent local opt-in, never a build flag. */
     public boolean developerMode() { return prefs.getBoolean("developer_mode", false); }
 

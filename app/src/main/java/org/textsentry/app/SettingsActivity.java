@@ -111,6 +111,8 @@ public final class SettingsActivity extends Activity {
         UiKit.heading(this, data, "Data & privacy");
         UiKit.button(this, data, "History", false, () ->
                 startActivity(new Intent(this, HistoryActivity.class)));
+        UiKit.button(this, data, "Manage exceptions", false, () ->
+                startActivity(new Intent(this, ExceptionsActivity.class)));
         UiKit.button(this, data, "Clear history", false, () ->
                 new AlertDialog.Builder(this)
                         .setTitle("Clear local history?")

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.os.Bundle;
+import android.content.Intent;
+import android.widget.EditText;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -49,6 +51,8 @@ public final class HistoryActivity extends Activity {
         UiKit.description(this, summary,
                 entries.size() + " evaluated · " + replied + " sent/submitted · " + preview + " previews");
         UiKit.description(this, summary, "Encrypted on this device.");
+        UiKit.button(this, summary, "Manage exceptions", false, () ->
+                startActivity(new Intent(this, ExceptionsActivity.class)));
         UiKit.button(this, summary, repliesOnly ? "Show all decisions" : "Show replies only",
                 false, () -> { repliesOnly = !repliesOnly; render(); });
 
@@ -120,8 +124,13 @@ public final class HistoryActivity extends Activity {
 
     private void showMessageActions(TextView anchor, HistoryStore.Entry item) {
         PopupMenu actions = new PopupMenu(this, anchor);
-        actions.getMenu().add(0, 1, 0, "Send for Review");
+        actions.getMenu().add(0, 2, 0, "Add exception");
+        actions.getMenu().add(0, 1, 1, "Send for Review");
         actions.setOnMenuItemClickListener(option -> {
+            if (option.getItemId() == 2) {
+                showExceptionChoice(item);
+                return true;
+            }
             if (option.getItemId() != 1) return false;
             try {
                 // Opens the user's email app; no SMS or decision is sent by TextSentry.
@@ -134,6 +143,67 @@ public final class HistoryActivity extends Activity {
         actions.show();
     }
 
+
+    private void showExceptionChoice(HistoryStore.Entry item) {
+        boolean senderAvailable = ExceptionRules.canonicalSender(item.sender).length() > 0
+                && !"manual".equals(item.source);
+        String[] choices = senderAvailable
+                ? new String[]{"Protect this sender", "Protect a suggested phrase"}
+                : new String[]{"Protect a suggested phrase"};
+        new AlertDialog.Builder(this)
+                .setTitle("Add exception")
+                .setItems(choices, (d, which) -> {
+                    if (senderAvailable && which == 0) {
+                        confirmSenderException(item.sender);
+                    } else {
+                        promptPhraseException(item.body);
+                    }
+                })
+                .setNegativeButton("Cancel", null).show();
+    }
+
+    private void confirmSenderException(String sender) {
+        new AlertDialog.Builder(this)
+                .setTitle("Never STOP this sender?")
+                .setMessage("Messages from " + sender + " will still be classified, "
+                        + "but automatic STOP replies will be suppressed.")
+                .setPositiveButton("Protect", (d, which) -> {
+                    try {
+                        boolean added = new ExceptionStore(this).addSender(sender);
+                        Toast.makeText(this, added ? "Sender protected" : "Already protected",
+                                Toast.LENGTH_SHORT).show();
+                    } catch (Exception error) {
+                        Toast.makeText(this, "Could not save exception", Toast.LENGTH_LONG).show();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void promptPhraseException(String message) {
+        String suggested = ExceptionRules.suggestPhrase(message);
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setHint("Specific brand or event name");
+        input.setText(suggested);
+        input.setSelection(input.length());
+        new AlertDialog.Builder(this)
+                .setTitle("Protect a phrase")
+                .setMessage("Suggested locally from this message. Edit before saving. "
+                        + "Matching texts and links will still be classified but won't get STOP.")
+                .setView(input)
+                .setPositiveButton("Save", (d, which) -> {
+                    try {
+                        boolean added = new ExceptionStore(this)
+                                .addPhrase(input.getText().toString());
+                        Toast.makeText(this, added ? "Phrase protected" : "Already protected",
+                                Toast.LENGTH_SHORT).show();
+                    } catch (Exception error) {
+                        Toast.makeText(this,
+                                "Use a specific brand or event name (at least 4 characters).",
+                                Toast.LENGTH_LONG).show();
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
     static String statusLabel(String value) {
         switch (value) {
             case "sent": return "✓ Sent (Android confirmed)";
@@ -142,6 +212,7 @@ public final class HistoryActivity extends Activity {
             case "preview": return "Preview · not sent";
             case "manual_suggestion": return "Suggested · manual send unverified";
             case "no_reply": return "No reply recommended";
+            case "excepted": return "Exception matched · STOP suppressed";
             case "blocked": return "Blocked · not sent";
             default: return "Not sent";
         }

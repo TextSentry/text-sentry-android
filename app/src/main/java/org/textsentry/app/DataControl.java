@@ -16,6 +16,12 @@ public final class DataControl {
         ManagedKeyMemory.clear();
         SetupFlow.reset(context);
         new AuthSessionStore(context).clear();
+        // Exceptions use a separate Keystore key and outlive Clear history, not Delete app data.
+        try {
+            new ExceptionStore(context).deleteAll();
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not erase encrypted exceptions", e);
+        }
         // Wipe the encrypted message archive and its Android Keystore key as well.
         try {
             new HistoryStore(context).deleteAll();
@@ -24,7 +30,7 @@ public final class DataControl {
         }
         for (String name : new String[] {"textsentry_settings", "textsentry_reply_ledger",
                 "textsentry_secrets", "textsentry_message_history", "textsentry_auth_session",
-                "textsentry_mms_seen", "textsentry_updates",
+                "textsentry_mms_seen", "textsentry_updates", "textsentry_exceptions",
                 Onboarding.PREFS}) {
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit();
         }

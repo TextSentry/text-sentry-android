@@ -63,6 +63,9 @@ public final class SmsWorker extends Worker {
             if (!decision.shouldReply) {
                 history.add(sender, message, evaluation.confidence, "", "no_reply", source);
                 settings.addHistory("AI: no reply");
+            } else if (new ExceptionStore(context).matches(sender, message)) {
+                history.add(sender, message, evaluation.confidence, "", "excepted", source);
+                settings.addHistory("Protected by exception: no STOP");
             } else if (!replyAllowed) {
                 history.add(sender, message, evaluation.confidence, "", "blocked", source);
                 settings.addHistory("Group MMS: automatic STOP blocked");
@@ -77,6 +80,14 @@ public final class SmsWorker extends Worker {
                 if (!ledger.reserveSend(sender, System.currentTimeMillis())) {
                     history.add(sender, message, evaluation.confidence, decision.reply, "blocked", source);
                     settings.addHistory("Blocked: recipient daily reply limit");
+                    return Result.success();
+                }
+                // Recheck immediately before invoking Android; rules can change while the
+                // model request or ledger reservation is in flight. Decrypt errors fail closed.
+                if (!settings.generation().equals(queuedGeneration)
+                        || new ExceptionStore(context).matches(sender, message)) {
+                    history.add(sender, message, evaluation.confidence, "", "excepted", source);
+                    settings.addHistory("Protected by exception or updated rules: no STOP");
                     return Result.success();
                 }
                 SmsManager manager = context.getSystemService(SmsManager.class);

@@ -49,6 +49,7 @@ final class HistoryReviewEmail {
             case "sent":
             case "submitting":
             case "send_failed":
+            case "excepted":
             case "preview":
             case "manual_suggestion":
             case "blocked": return "Match";
