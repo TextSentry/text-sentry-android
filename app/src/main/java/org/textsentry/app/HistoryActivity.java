@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.os.Bundle;
 import android.content.Intent;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -155,7 +156,7 @@ public final class HistoryActivity extends Activity {
         boolean senderAvailable = ExceptionRules.canonicalSender(item.sender).length() > 0
                 && !"manual".equals(item.source);
         String[] choices = senderAvailable
-                ? new String[]{"Protect this sender", "Protect a suggested phrase"}
+                ? new String[]{"Protect this sender", "Suggest phrase with Jev"}
                 : new String[]{"Protect a suggested phrase"};
         new AlertDialog.Builder(this)
                 .setTitle("Add exception")
@@ -185,17 +186,73 @@ public final class HistoryActivity extends Activity {
                 }).setNegativeButton("Cancel", null).show();
     }
 
+    /** Play manual consent and sideload opt-in are explicit for this additional Jev call. */
     private void promptPhraseException(String message) {
-        String suggested = ExceptionRules.suggestPhrase(message);
+        new AlertDialog.Builder(this)
+                .setTitle("Ask Jev to suggest a phrase?")
+                .setMessage("TextSentry will send this selected message to your current "
+                        + "Jev provider for one additional AI decision. Jev will choose "
+                        + "from names found in the message. No rule is saved until you approve it.")
+                .setPositiveButton("Ask Jev", (dialog, which) -> requestJevSuggestion(message))
+                .setNeutralButton("Enter manually", (dialog, which) -> showPhraseEditor("", false))
+                .setNegativeButton("Cancel", null).show();
+    }
+
+    private void requestJevSuggestion(String message) {
+        List<String> candidates = ExceptionPhraseCandidates.extract(message);
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "No candidate names found; enter a phrase manually.",
+                    Toast.LENGTH_LONG).show();
+            showPhraseEditor("", false);
+            return;
+        }
+        ProgressBar progress = new ProgressBar(this);
+        AlertDialog loading = new AlertDialog.Builder(this)
+                .setTitle("Consulting Jev")
+                .setMessage("Selecting a specific brand or event name…")
+                .setView(progress)
+                .setCancelable(false)
+                .create();
+        loading.show();
+        new Thread(() -> {
+            String phrase = "";
+            boolean failed = false;
+            try {
+                phrase = AnalysisAccess.suggestExceptionPhrase(this, message, candidates);
+            } catch (Exception error) {
+                failed = true;
+            }
+            final String selected = phrase;
+            final boolean unavailable = failed;
+            runOnUiThread(() -> {
+                loading.dismiss();
+                if (isFinishing() || isDestroyed()) return;
+                if (unavailable) {
+                    Toast.makeText(this, "Jev unavailable. Enter a phrase manually.",
+                            Toast.LENGTH_LONG).show();
+                } else if (selected.isEmpty()) {
+                    Toast.makeText(this, "Jev did not find a specific match. Enter a phrase.",
+                            Toast.LENGTH_LONG).show();
+                }
+                showPhraseEditor(selected, !unavailable && !selected.isEmpty());
+            });
+        }, "textsentry-jev-exception-suggestion").start();
+    }
+
+    private void showPhraseEditor(String suggested, boolean selectedByJev) {
         EditText input = new EditText(this);
         input.setSingleLine(true);
         input.setHint("Specific brand or event name");
         input.setText(suggested);
         input.setSelection(input.length());
         new AlertDialog.Builder(this)
-                .setTitle("Protect a phrase")
-                .setMessage("Suggested locally from this message. Edit before saving. "
-                        + "Matching texts and links will still be classified but won't get STOP.")
+                .setTitle(selectedByJev ? "Review Jev suggestion" : "Protect a phrase")
+                .setMessage(selectedByJev
+                        ? "Jev selected this phrase from names in your message. "
+                            + "Edit it before saving. Matching messages will still be "
+                            + "classified, but won't get an automatic STOP."
+                        : "Enter a specific brand or event name. Matching messages "
+                            + "will still be classified, but won't get STOP.")
                 .setView(input)
                 .setPositiveButton("Save", (d, which) -> {
                     try {

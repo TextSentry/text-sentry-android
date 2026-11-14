@@ -4,7 +4,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Deterministic, local exception matching: no additional AI call or remote rule storage. */
+/** Deterministic, on-device matching. Jev selection is a separate user-initiated request. */
 public final class ExceptionRules {
     private static final Pattern LAYLO = Pattern.compile(
             "https?://(?:www\\.)?([a-z][a-z0-9-]{3,40})\\.laylo\\.co(?:[/?#:]|$)",
@@ -54,7 +54,7 @@ public final class ExceptionRules {
                 && folded(message).contains(folded(phrase));
     }
 
-    /** A locally extracted candidate is only a suggestion; the user edits/approves it. */
+    /** Legacy local candidate extraction; the UI now uses Jev Choice to select a phrase. */
     public static String suggestPhrase(String message) {
         if (message == null) return "";
         Matcher brandedLink = LAYLO.matcher(message);

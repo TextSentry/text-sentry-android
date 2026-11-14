@@ -33,6 +33,21 @@ final class AnalysisAccess {
                 : "○ Sign in or use your own key";
     }
 
+    /** Explicit opt-in history suggestion. No AWS/SMS content or managed-key persistence. */
+    static String suggestExceptionPhrase(Context context, String message,
+                                         java.util.List<String> candidates) throws Exception {
+        SystemOneClient client = new SystemOneClient();
+        if (new AuthSessionStore(context).hasSession()) {
+            return client.suggestExceptionManaged(
+                    ManagedKeyAccess.obtain(context), message, candidates);
+        }
+        String key = new KeyVault(context).read();
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("Sign in or configure your TypeSafe key");
+        }
+        return client.suggestException(key, SystemOneClient.MODEL, message, candidates);
+    }
+
     /** Must be called off the UI thread. Never falls back to BYOK for signed-in users. */
     static SystemOneClient.Evaluation evaluate(Context context, String rules, String message,
                                                double threshold, SystemOneClient.TraceSink trace)
