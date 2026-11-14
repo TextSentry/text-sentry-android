@@ -38,3 +38,8 @@ The **unsigned** Play bundle for CI compilation is `app/build/outputs/bundle/pla
 7. Confirm developer account testing eligibility (some new personal developer accounts must complete a closed-test period) in Play Console.
 
 **Not yet Play-approved:** The repo can produce a Play-oriented artifact and policy documentation, but only Google reviews and approves publication. The full automatic SMS experience is **not** available in the Play flavor until an approved restricted-permission pathway is built and reviewed.
+
+
+### Local STOP exceptions (both flavors)
+
+Users may explicitly protect a sender number or a suggested/editable keyword from History and manage encrypted local exceptions in Settings. Rule suggestions use local text/link extraction, not an additional AI request. Exceptions only suppress automatic STOP in sideload; Play remains manual-only and gains no SMS/Call Log permissions, receivers, or background monitoring. Clear History retains rules; Delete app data erases them.
