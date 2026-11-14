@@ -25,6 +25,7 @@
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".DeveloperActivity" android:exported="false" />
         <activity android:name=".HistoryActivity" android:exported="false" />
+        <activity android:name=".ExceptionsActivity" android:exported="false" />
         <!-- MainActivity retains Play share-sheet export; SetupGate blocks all unconfigured access. -->
         <activity android:name=".MainActivity" android:exported="true" />
         <activity android:name=".SetupActivity" android:exported="true">
