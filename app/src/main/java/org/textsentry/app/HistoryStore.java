@@ -198,6 +198,14 @@ public final class HistoryStore {
         values.put("status", item.getString("status"));
         values.put("payload", seal(item));
         if (db.insertWithOnConflict(TABLE, null, values, conflictPolicy) == -1L) {
+            // CONFLICT_IGNORE returns -1 when migration replays an already committed ID.
+            // Keep the original record (it may already have an updated send status).
+            if (conflictPolicy == SQLiteDatabase.CONFLICT_IGNORE) {
+                try (Cursor existing = db.query(TABLE, new String[]{"id"}, "id=?",
+                        new String[]{id}, null, null, null)) {
+                    if (existing.moveToFirst()) return;
+                }
+            }
             throw new IllegalStateException("Could not persist encrypted history");
         }
     }

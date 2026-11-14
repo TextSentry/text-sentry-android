@@ -139,6 +139,10 @@ public class HistoryStoreTest {
             assertEquals("confirmed older reply", history.list().get(1).body);
             assertFalse(app.getSharedPreferences("textsentry_message_history",
                     Context.MODE_PRIVATE).contains("encrypted_records"));
+            // A crash after database commit but before removing old preferences must
+            // not fail or duplicate records when the import is retried.
+            app.getSharedPreferences("textsentry_message_history", Context.MODE_PRIVATE)
+                    .edit().putString("encrypted_records", encoded).commit();
             assertEquals(2, new HistoryStore(app, () -> base).list().size());
         } finally {
             history.clear();
