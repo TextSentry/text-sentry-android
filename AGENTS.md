@@ -70,7 +70,7 @@ Scope discipline: prefer focused changes; document ambiguous choices, choose the
 ## Local encrypted history & permission scope
 
 - The History screen lists full processed message text, sender, time, TypeSafe numeric yes-probability, recommended response, confirmed/failed/pending/preview send status, and an honest "Not deleted by TextSentry" status. Do not claim inbox deletion or actual message delivery without evidence.
-- History is a bounded, encrypted Keystore-backed, app-private archive. Clear history erases it; Delete all app data also destroys its encryption key. Never log original SMS in plaintext elsewhere.
+- History is a Keystore-backed encrypted local SQLite archive: only confirmed sent replies have no automatic retention limit; all other results expire after 24 hours. Page long-running history in the UI. Clear history erases all records; Delete all app data also destroys its encryption key. Never log original SMS in plaintext elsewhere.
 - A single Jev request must produce both decision and confidence: use `SystemOneClient.evaluate()`, not separate calls to score and decide.
 - Sideload RECEIVE_SMS and SEND_SMS runtime permissions must be separately requested with clear user intent. Permission grant alone does not activate auto-send. READ_SMS is **not needed** to store messages TextSentry itself processed; do not add it solely for history.
 - Android SMS Provider modification/deletion requires a complete, user-selected default SMS/MMS handler and an explicit role change. Do not declare bogus default-SMS components or request WRITE_SMS/READ_SMS as a workaround. Preserve the Play flavor's zero restricted-SMS-permission policy.

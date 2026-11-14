@@ -16,10 +16,10 @@ final class HistoryReviewEmail {
 
         // ACTION_SENDTO clients differ: some ignore EXTRA_TEXT but honor URI body.
         String report = body(item);
-        Uri recipient = Uri.parse("mailto:" + SUPPORT).buildUpon()
-                .appendQueryParameter("subject", SUBJECT)
-                .appendQueryParameter("body", report)
-                .build();
+        // mailto is an opaque URI on Android: construct RFC 6068 query explicitly.
+        Uri recipient = Uri.parse("mailto:" + SUPPORT
+                + "?subject=" + Uri.encode(SUBJECT)
+                + "&body=" + Uri.encode(report));
         Intent email = new Intent(Intent.ACTION_SENDTO, recipient);
         email.putExtra(Intent.EXTRA_EMAIL, new String[]{SUPPORT});
         email.putExtra(Intent.EXTRA_SUBJECT, SUBJECT);

@@ -28,11 +28,11 @@ public class HistoryReviewEmailTest {
             assertEquals("mailto", intent.getData().getScheme());
             assertTrue(intent.getData().getSchemeSpecificPart()
                     .startsWith("support@textsentry.org?"));
-            assertEquals("TextSentry message review",
-                    intent.getData().getQueryParameter("subject"));
-            assertTrue(intent.getData().getQueryParameter("body")
+            assertTrue(intent.getDataString().contains("?subject="));
+            assertTrue(intent.getDataString().contains("&body="));
+            assertTrue(android.net.Uri.decode(intent.getDataString())
                     .contains("Are you bringing the board game tonight?"));
-            assertTrue(intent.getData().getQueryParameter("body")
+            assertTrue(android.net.Uri.decode(intent.getDataString())
                     .contains("Jev decision: No match"));
             assertEquals("TextSentry message review",
                     intent.getStringExtra(Intent.EXTRA_SUBJECT));
