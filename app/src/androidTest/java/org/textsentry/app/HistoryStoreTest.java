@@ -167,6 +167,23 @@ public class HistoryStoreTest {
         DataControl.deleteLocalData(app);
         assertTrue(new HistoryStore(app).list().isEmpty());
     }
+    @Test public void developerTracesExpireAlongsideOtherUnsents() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        long day = 1_800_000_000_000L;
+        HistoryStore store = new HistoryStore(app, () -> day);
+        store.clear();
+        try {
+            store.addTrace("sms", "synthetic-message", "response");
+            assertEquals(1, store.traces().size());
+            HistoryStore tomorrow = new HistoryStore(app,
+                    () -> day + HistoryRetention.ONE_DAY_MS + 1L);
+            tomorrow.pruneExpired();
+            assertEquals(0, tomorrow.traces().size());
+        } finally {
+            store.clear();
+        }
+    }
+
     @Test public void developerTracesAreBoundedEncryptedAndIndependentlyClearable() throws Exception {
         Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
         HistoryStore store = new HistoryStore(app);

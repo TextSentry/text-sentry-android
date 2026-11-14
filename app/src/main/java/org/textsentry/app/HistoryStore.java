@@ -240,9 +240,25 @@ public final class HistoryStore {
         return db;
     }
 
+    /** Developer traces may contain SMS text and expire on the same 24-hour schedule. */
+    private void pruneTraces() throws Exception {
+        if (!prefs.contains(TRACES)) return;
+        JSONArray old = readLegacy(TRACES);
+        JSONArray current = new JSONArray();
+        long cutoff = clock.getAsLong() - HistoryRetention.ONE_DAY_MS;
+        for (int i = 0; i < old.length(); i++) {
+            JSONObject item = old.getJSONObject(i);
+            if (item.optLong("timestamp", 0) > cutoff) current.put(item);
+        }
+        if (old.length() != current.length()) writeTraces(current);
+    }
+
     /** Expiration also runs on read/write so it never relies solely on periodic Android work. */
     public void pruneExpired() throws Exception {
-        synchronized (LOCK) { ready(); }
+        synchronized (LOCK) {
+            ready();
+            pruneTraces();
+        }
     }
 
     public String add(String sender, String body, double confidence,
@@ -342,6 +358,7 @@ public final class HistoryStore {
         JSONObject item = new JSONObject().put("timestamp", clock.getAsLong())
                 .put("source", source).put("request", request).put("response", response);
         synchronized (LOCK) {
+            pruneTraces();
             JSONArray existing = readLegacy(TRACES);
             JSONArray latest = new JSONArray().put(item);
             for (int i = 0; i < existing.length() && i < MAX_TRACES - 1; i++)
@@ -352,6 +369,7 @@ public final class HistoryStore {
 
     public List<TraceEntry> traces() throws Exception {
         synchronized (LOCK) {
+            pruneTraces();
             JSONArray saved = readLegacy(TRACES);
             List<TraceEntry> output = new ArrayList<>();
             for (int i = 0; i < saved.length(); i++)
