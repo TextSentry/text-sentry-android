@@ -1,6 +1,7 @@
 package org.textsentry.app;
 
 import org.json.JSONObject;
+import java.util.List;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -170,6 +171,94 @@ public final class SystemOneClient {
         AiDecision decision = AiDecision.parse(new JSONObject().put("should_reply", approved)
                 .put("reply", approved ? cannedReply.trim() : "").toString());
         return new Evaluation(decision, confidence);
+    }
+
+    /** A separate, user-approved Jev Choice request; never reuse classification prompts. */
+    public String suggestException(String apiKey, String model, String message,
+                                   List<String> candidates) throws Exception {
+        if (!MODEL.equals(model)) throw new IllegalArgumentException("Unexpected Jev model");
+        return suggestExceptionConfigured(apiKey, MODEL, ENDPOINT, message, candidates);
+    }
+
+    /** Managed users stay on OpenRouter's pinned Jev model with a RAM-only key. */
+    public String suggestExceptionManaged(String managedKey, String message,
+                                          List<String> candidates) throws Exception {
+        return suggestExceptionConfigured(managedKey, OPENROUTER_MODEL,
+                OPENROUTER_ENDPOINT, message, candidates);
+    }
+
+    private String suggestExceptionConfigured(String key, String model, String endpoint,
+                                              String message, List<String> candidates)
+            throws Exception {
+        if (candidates == null) throw new IllegalArgumentException("Candidates required");
+        if (candidates.isEmpty()) return "";
+        if (isEmpty(key) || isEmpty(message) || message.length() > 1600
+                || candidates.size() > ExceptionPhraseCandidates.MAX_CANDIDATES) {
+            throw new IllegalArgumentException("Invalid Jev suggestion request");
+        }
+        JSONObject options = new JSONObject();
+        for (int i = 0; i < candidates.size(); i++) {
+            String candidate = candidates.get(i);
+            if (!ExceptionRules.validPhrase(candidate)
+                    || !ExceptionRules.matchesPhrase(candidate, message)) {
+                throw new IllegalArgumentException("Candidate must be a specific phrase in the SMS");
+            }
+            options.put("candidate_" + i,
+                    "Use the exact phrase '" + candidate + "' as an exception identifying "
+                            + "a specific sender, artist, business, brand or event mentioned "
+                            + "in the SMS; do not prefer generic promotions or ticket language.");
+        }
+        options.put("none", "None of the proposed phrases is a safe, specific name that "
+                + "would protect the intended brand/artist rather than generic marketing.");
+        JSONObject question = new JSONObject()
+                .put("type", "choice")
+                .put("instructions", "Select the BEST specific, recognizable, enduring sender "
+                        + "or brand name to protect messages the owner wants to keep. "
+                        + "Prefer an identifiable artist, business, or organization over "
+                        + "a one-off event, venue, city, generic URL or discount code. "
+                        + "If no candidate is specific enough, choose none. "
+                        + "Do not use the overall spam classification as the answer.")
+                .put("criteria", options);
+        JSONObject request = new JSONObject()
+                .put("model", model).put("state", message)
+                .put("questions", new JSONObject().put("phrase", question));
+        String raw = transport.post(endpoint, key.trim(), request.toString());
+        try {
+            JSONObject response = new JSONObject(raw);
+            if (isEmpty(response.optString("model", ""))) {
+                throw new IllegalArgumentException("Missing Jev model");
+            }
+            JSONObject answers = response.optJSONObject("answers");
+            JSONObject answer = answers == null ? null : answers.optJSONObject("phrase");
+            if (answer == null || !"choice".equals(answer.optString("type"))) {
+                throw new IllegalArgumentException("Wrong Jev answer type");
+            }
+            String chosen = answer.optString("choice", "");
+            if (!options.has(chosen)) {
+                throw new IllegalArgumentException("Jev returned unknown candidate");
+            }
+            JSONObject probabilities = answer.optJSONObject("probabilities");
+            if (probabilities == null) {
+                throw new IllegalArgumentException("Jev omitted Choice probabilities");
+            }
+            Object selected = probabilities.opt(chosen);
+            Object confidenceValue = answer.opt("confidence");
+            if (!(selected instanceof Number) || !(confidenceValue instanceof Number)) {
+                throw new IllegalArgumentException("Invalid Jev confidence");
+            }
+            double probability = ((Number) selected).doubleValue();
+            double confidence = ((Number) confidenceValue).doubleValue();
+            if (!Double.isFinite(probability) || probability < 0 || probability > 1
+                    || !Double.isFinite(confidence) || confidence < 0 || confidence > 1) {
+                throw new IllegalArgumentException("Invalid Jev probability");
+            }
+            // This is a user-editable suggestion, never an automatic whitelist action.
+            if ("none".equals(chosen) || probability < 0.60 || confidence < 0.25) return "";
+            int index = Integer.parseInt(chosen.substring("candidate_".length()));
+            return candidates.get(index);
+        } catch (RuntimeException malformed) {
+            throw new IllegalArgumentException("Unexpected Jev suggestion response", malformed);
+        }
     }
 
     public static boolean validReply(String reply) {

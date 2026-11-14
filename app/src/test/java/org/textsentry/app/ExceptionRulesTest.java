@@ -26,13 +26,6 @@ public class ExceptionRulesTest {
         assertFalse(ExceptionRules.matchesPhrase("sale", "Click on the link"));
     }
 
-    @Test public void suggestedKeywordUsesBrandLinkOrNamedEvent() {
-        assertEquals("pocketplanets", ExceptionRules.suggestPhrase(CONCERT));
-        assertEquals("Starlight Festival", ExceptionRules.suggestPhrase(
-                "Starlight Festival tickets are live!"));
-        assertEquals("", ExceptionRules.suggestPhrase("sale today, click the link!"));
-    }
-
     @Test public void invalidAndOverlyBroadRulesAreRejected() {
         for (String invalid : new String[] {"", "VIP", "sale", "!!!", "42", "x".repeat(100)}) {
             assertFalse(ExceptionRules.validPhrase(invalid));

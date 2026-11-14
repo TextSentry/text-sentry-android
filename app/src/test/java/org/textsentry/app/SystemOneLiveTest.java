@@ -40,6 +40,20 @@ public class SystemOneLiveTest {
                 ClassificationFixtures.GET_OUT_THE_VOTE, MessageCategories.ALL);
     }
 
+    /** Trusted main-only smoke check for Jev's actual Choice response contract. */
+    @Test public void liveJevAcceptsExceptionPhraseChoiceRequest() throws Exception {
+        String key = System.getenv("TYPESAFE_AI_API_KEY");
+        Assume.assumeTrue("Requires TYPESAFE_AI_API_KEY", key != null && !key.trim().isEmpty());
+        String synthetic = "Hi Chicago, it's Moon Lanterns! Northern Lights Festival "
+                + "tickets are on sale at https://moonlanterns.laylo.co/t/example";
+        java.util.List<String> candidates = ExceptionPhraseCandidates.extract(synthetic);
+        assertTrue(candidates.size() >= 2);
+        String result = new SystemOneClient().suggestException(
+                key, SystemOneClient.MODEL, synthetic, candidates);
+        // Jev can select 'none' or respond with low confidence; it cannot invent text.
+        assertTrue(result.isEmpty() || candidates.contains(result));
+    }
+
     private static void assertHighScore(SystemOneClient client, String key,
                                         String label, String sms, int categories)
             throws Exception {
