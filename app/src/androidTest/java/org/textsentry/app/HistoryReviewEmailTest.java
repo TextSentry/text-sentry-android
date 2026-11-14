@@ -25,7 +25,15 @@ public class HistoryReviewEmailTest {
                     0.07, "", "no_reply", "mms");
             Intent intent = HistoryReviewEmail.createIntent(history.list().get(0));
             assertEquals(Intent.ACTION_SENDTO, intent.getAction());
-            assertEquals("mailto:support@textsentry.org", intent.getData().toString());
+            assertEquals("mailto", intent.getData().getScheme());
+            assertTrue(intent.getData().getSchemeSpecificPart()
+                    .startsWith("support@textsentry.org?"));
+            assertTrue(intent.getDataString().contains("?subject="));
+            assertTrue(intent.getDataString().contains("&body="));
+            assertTrue(android.net.Uri.decode(intent.getDataString())
+                    .contains("Are you bringing the board game tonight?"));
+            assertTrue(android.net.Uri.decode(intent.getDataString())
+                    .contains("Jev decision: No match"));
             assertEquals("TextSentry message review",
                     intent.getStringExtra(Intent.EXTRA_SUBJECT));
             String body = intent.getStringExtra(Intent.EXTRA_TEXT);

@@ -43,3 +43,8 @@ The **unsigned** Play bundle for CI compilation is `app/build/outputs/bundle/pla
 ### Local STOP exceptions (both flavors)
 
 Users may explicitly protect a sender number or a suggested/editable keyword from History and manage encrypted local exceptions in Settings. Rule suggestions use local text/link extraction, not an additional AI request. Exceptions only suppress automatic STOP in sideload; Play remains manual-only and gains no SMS/Call Log permissions, receivers, or background monitoring. Clear History retains rules; Delete app data erases them.
+
+
+### Encrypted history retention and email compatibility
+
+Both flavors now store message history in a device-only SQLite database with per-record AES-256-GCM content encryption. Confirmed Android sent replies are retained indefinitely until users clear data; all other history expires after 24 hours and is pruned on read/write plus best-effort WorkManager maintenance. Existing encrypted 100-record history migrates without network calls. History is paged to avoid loading an unbounded collection into the UI. The Play flavor still cannot send/confirm SMS, so all Play manual analyses expire after 24 hours; no restricted permissions are introduced. User-initiated support drafts now supply message text via both email intent extras and an encoded mailto body.

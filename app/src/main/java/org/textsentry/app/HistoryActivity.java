@@ -18,6 +18,7 @@ import java.util.List;
 /** Private, full message history with model probability and true send status. */
 public final class HistoryActivity extends Activity {
     private boolean repliesOnly;
+    private int visibleLimit = 50;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -33,28 +34,26 @@ public final class HistoryActivity extends Activity {
     private void render() {
         LinearLayout root = UiKit.screen(this, "History", true);
         List<HistoryStore.Entry> entries;
+        HistoryStore.Summary counts;
         try {
-            entries = new HistoryStore(this).list();
+            HistoryStore store = new HistoryStore(this);
+            counts = store.summary();
+            entries = store.list(visibleLimit, 0, repliesOnly);
         } catch (Exception error) {
             LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
             UiKit.heading(this, card, "History unavailable");
             UiKit.description(this, card, "Could not unlock local message history. No entries were deleted.");
             return;
         }
-        int replied = 0, preview = 0;
-        for (HistoryStore.Entry entry : entries) {
-            if ("sent".equals(entry.status) || "submitting".equals(entry.status)) replied++;
-            if ("preview".equals(entry.status) || "manual_suggestion".equals(entry.status)) preview++;
-        }
         LinearLayout summary = UiKit.card(this, root, UiKit.HIGHLIGHT);
         UiKit.heading(this, summary, "Activity");
         UiKit.description(this, summary,
-                entries.size() + " evaluated · " + replied + " sent/submitted · " + preview + " previews");
+                counts.total + " evaluated · " + counts.replied + " sent/submitted · " + counts.preview + " previews");
         UiKit.description(this, summary, "Encrypted on this device.");
         UiKit.button(this, summary, "Manage exceptions", false, () ->
                 startActivity(new Intent(this, ExceptionsActivity.class)));
         UiKit.button(this, summary, repliesOnly ? "Show all decisions" : "Show replies only",
-                false, () -> { repliesOnly = !repliesOnly; render(); });
+                false, () -> { repliesOnly = !repliesOnly; visibleLimit = 50; render(); });
 
 
         int visible = 0;
@@ -98,6 +97,13 @@ public final class HistoryActivity extends Activity {
             if (!item.reply.isEmpty()) UiKit.description(this, card, "Suggested reply: " + item.reply);
             UiKit.description(this, card, "Deletion: " + item.deletionStatus());
         }
+        int totalVisible = repliesOnly ? counts.replied : counts.total;
+        if (visible < totalVisible) {
+            UiKit.button(this, root, "Load older messages", false, () -> {
+                visibleLimit += 50;
+                render();
+            });
+        }
         if (visible == 0) {
             LinearLayout empty = UiKit.card(this, root, 0xFFFFFFFF);
             UiKit.heading(this, empty, repliesOnly ? "No replies yet" : "No history yet");
@@ -114,6 +120,7 @@ public final class HistoryActivity extends Activity {
                             try {
                                 new HistoryStore(this).clear();
                                 new Settings(this).clearHistory();
+                                visibleLimit = 50;
                                 render();
                             } catch (Exception error) {
                                 new AlertDialog.Builder(this).setMessage(
