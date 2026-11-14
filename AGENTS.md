@@ -66,6 +66,7 @@ Scope discipline: prefer focused changes; document ambiguous choices, choose the
 - The classifier does NOT require the incoming message to contain STOP or an unsubscribe option. Judge selected message categories by purpose and context at the configured threshold. Never send campaign persuasion or interfere with official voting/registration notices.
 - User-entered extra instructions may further restrict the choices, but must not expand unselected categories or disable safety checks.
 - Both flavors, worker, preview and Play review must use `settings.effectivePrompt()`. Saving categories invalidates queued work generations. Tests assert persistence and single-call semantics.
+- Exception suggestions are a separate, user-triggered Jev **Choice** request selecting from locally extracted candidate names, never a string-generating call, and never part of the automatic classifier. Require explicit user consent for the additional content transmission (including Play), use the same managed/BYOK provider routing and privacy guardrails, and keep manual confirmation and local-only rule storage.
 
 ## Local encrypted history & permission scope
 

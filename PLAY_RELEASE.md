@@ -42,7 +42,7 @@ The **unsigned** Play bundle for CI compilation is `app/build/outputs/bundle/pla
 
 ### Local STOP exceptions (both flavors)
 
-Users may explicitly protect a sender number or a suggested/editable keyword from History and manage encrypted local exceptions in Settings. Rule suggestions use local text/link extraction, not an additional AI request. Exceptions only suppress automatic STOP in sideload; Play remains manual-only and gains no SMS/Call Log permissions, receivers, or background monitoring. Clear History retains rules; Delete app data erases them.
+Users may explicitly protect a sender number or a suggested/editable keyword from History and manage encrypted local exceptions in Settings. Choosing a Jev suggestion is a separate, explicitly consented Jev Choice request that sends only the selected history message directly to the existing provider, never AWS; names are extracted locally and Jev chooses a candidate. Play retains manual-only behavior and new user consent is required for each suggestion. Exceptions only suppress automatic STOP in sideload; Play remains manual-only and gains no SMS/Call Log permissions, receivers, or background monitoring. Clear History retains rules; Delete app data erases them.
 
 
 ### Encrypted history retention and email compatibility

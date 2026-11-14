@@ -34,6 +34,14 @@ public class JevExceptionSuggestionTest {
         assertTrue(phrases.size() <= ExceptionPhraseCandidates.MAX_CANDIDATES);
     }
 
+    @Test public void namedEventWithoutLinkRemainsAnOption() {
+        assertTrue(ExceptionPhraseCandidates.extract(
+                "Big Bootie World tickets go on sale tomorrow")
+                .contains("Big Bootie World"));
+        assertTrue(ExceptionPhraseCandidates.extract(
+                "SALE!! Use code SAVE20").isEmpty());
+    }
+
     @Test public void oneJevChoiceSelectsBestCandidateEvenWhenNotFirst() throws Exception {
         List<String> candidates = List.of("Starlight Festival", "pocketplanets");
         int[] requests = {0};
