@@ -13,10 +13,17 @@ final class HistoryReviewEmail {
     private HistoryReviewEmail() {}
 
     static Intent createIntent(HistoryStore.Entry item) {
-        Intent email = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + SUPPORT));
+
+        // ACTION_SENDTO clients differ: some ignore EXTRA_TEXT but honor URI body.
+        String report = body(item);
+        Uri recipient = Uri.parse("mailto:" + SUPPORT).buildUpon()
+                .appendQueryParameter("subject", SUBJECT)
+                .appendQueryParameter("body", report)
+                .build();
+        Intent email = new Intent(Intent.ACTION_SENDTO, recipient);
         email.putExtra(Intent.EXTRA_EMAIL, new String[]{SUPPORT});
         email.putExtra(Intent.EXTRA_SUBJECT, SUBJECT);
-        email.putExtra(Intent.EXTRA_TEXT, body(item));
+        email.putExtra(Intent.EXTRA_TEXT, report);
         return email;
     }
 
