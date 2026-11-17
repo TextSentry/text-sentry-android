@@ -40,6 +40,30 @@ public class SystemOneLiveTest {
                 ClassificationFixtures.GET_OUT_THE_VOTE, MessageCategories.ALL);
     }
 
+    @Test public void politicalSurveysScoreHighButPersonalConversationsRemainExcluded()
+            throws Exception {
+        String key = System.getenv("TYPESAFE_AI_API_KEY");
+        Assume.assumeTrue("Requires TYPESAFE_AI_API_KEY", key != null && !key.trim().isEmpty());
+        SystemOneClient client = new SystemOneClient();
+        for (int categories : new int[] {MessageCategories.POLITICAL, MessageCategories.ALL}) {
+            assertHighScore(client, key, "casual political outreach with opt-out",
+                    ClassificationFixtures.POLITICAL_SURVEY, categories);
+            assertHighScore(client, key, "political survey without opt-out",
+                    ClassificationFixtures.POLITICAL_SURVEY_NO_OPT_OUT, categories);
+            for (ClassificationFixtures.Case example : ClassificationFixtures.PERSONAL_POLITICAL_MESSAGES) {
+                double score = client.score(key, SystemOneClient.MODEL,
+                        MessageCategories.compose(categories, ""), example.sms);
+                assertTrue(example.name + " should score below the 90% reply threshold, got " + score,
+                        score < 0.90);
+            }
+        }
+        double disabled = client.score(key, SystemOneClient.MODEL,
+                MessageCategories.compose(MessageCategories.VOTE | MessageCategories.MARKETING, ""),
+                ClassificationFixtures.POLITICAL_SURVEY);
+        assertTrue("Political outreach must not trigger with Political disabled, got " + disabled,
+                disabled < 0.90);
+    }
+
     /** Trusted main-only smoke check for Jev's actual Choice response contract. */
     @Test public void liveJevAcceptsExceptionPhraseChoiceRequest() throws Exception {
         String key = System.getenv("TYPESAFE_AI_API_KEY");
