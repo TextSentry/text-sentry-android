@@ -87,7 +87,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout rules = UiKit.card(this, root, 0xFFFFFFFF);
         UiKit.heading(this, rules, "Filter categories");
         voteCategory = addCategory(rules, "Voting reminders", "", MessageCategories.VOTE);
-        politicalCategory = addCategory(rules, "Political campaigns", "", MessageCategories.POLITICAL);
+        politicalCategory = addCategory(rules, "Political campaigns", "Campaigns, political surveys and issue outreach.", MessageCategories.POLITICAL);
         marketingCategory = addCategory(rules, "Marketing", "", MessageCategories.MARKETING);
         generatedInstructions = UiKit.description(this, rules, "");
         generatedInstructions.setVisibility(android.view.View.GONE);
