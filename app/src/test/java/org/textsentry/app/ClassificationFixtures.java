@@ -4,7 +4,7 @@ package org.textsentry.app;
  * Public, redacted classification regression examples. No sender numbers,
  * account identifiers, real children's names, or private medical details.
  *
- * The two positive bodies are copied from reported false negatives.
+ * Positive bodies are based on reported false negatives; outreach names are synthetic.
  * Negative cases are synthetic examples of legitimate automated services.
  */
 final class ClassificationFixtures {
@@ -13,6 +13,21 @@ final class ClassificationFixtures {
             + "and cuts back on energy production, meaning you'll pay more on your monthly "
             + "bills. Is your monthly energy bill increasing?\n"
             + "-Building Together\nStop to End";
+
+    static final String POLITICAL_SURVEY =
+            "Hey, it's Alex. Curious what people think about America's ties with Israel. "
+            + "Open to a quick chat? Stop2End";
+
+    static final String POLITICAL_SURVEY_NO_OPT_OUT =
+            "We're conducting a public opinion poll on US foreign policy. "
+            + "Would you take a few minutes to share your views?";
+
+    static final Case[] PERSONAL_POLITICAL_MESSAGES = {
+        new Case("personal political conversation",
+                "Hey, what did you think of our conversation about Israel at dinner last night?"),
+        new Case("personal policy discussion",
+                "Can we finish our chat about the new tax bill when I see you tomorrow?")
+    };
 
     static final String GET_OUT_THE_VOTE =
             "Haven't voted yet? Find your early voting or Election Day location: "
