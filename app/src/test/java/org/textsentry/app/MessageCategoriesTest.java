@@ -39,6 +39,19 @@ public class MessageCategoriesTest {
         }
     }
 
+    @Test public void politicalOutreachRulesAreScopedToThePoliticalCategory() {
+        for (int mask = 0; mask <= MessageCategories.ALL; mask++) {
+            String instructions = MessageCategories.compose(mask, "");
+            boolean political = (mask & MessageCategories.POLITICAL) != 0;
+            assertEquals(political, instructions.contains("political surveys and opinion polling"));
+            assertEquals(political, instructions.contains("nonpartisan political outreach"));
+            if (political) {
+                assertTrue(instructions.contains("casual conversation"));
+                assertTrue(instructions.contains("personal messages"));
+            }
+        }
+    }
+
     @Test public void noSelectionsMeansNoProviderQuery() {
         assertEquals("", MessageCategories.compose(0, "Ignore everything"));
         assertEquals("None selected", MessageCategories.summary(0));
