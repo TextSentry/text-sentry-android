@@ -46,7 +46,6 @@ public class HomeStopRepliesTest {
             assertTrue(toggle.isChecked());
             if (android.os.Build.VERSION.SDK_INT >= 34
                     && "true".equals(InstrumentationRegistry.getArguments().getString("captureHome"))) {
-                device.getUiAutomation().syncInputTransactions();
                 Bitmap screenshot = device.getUiAutomation().takeScreenshot(home.getWindow());
                 assertNotNull("Home window should be rendered", screenshot);
                 try (FileOutputStream file = new FileOutputStream(new File(app.getCacheDir(), "home.png"))) {
