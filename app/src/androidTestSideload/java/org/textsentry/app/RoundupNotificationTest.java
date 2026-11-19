@@ -24,10 +24,10 @@ public class RoundupNotificationTest {
         try {
             store.clear();
             RoundupWorker.setFrequency(app, 0);
-            RoundupWorker.setFrequency(app, 1);
-            long start = System.currentTimeMillis() - 86_400_000L;
+            // Set the test clock/cadence without racing an asynchronously scheduled worker.
+            long start = System.currentTimeMillis() - 2 * 86_400_000L;
             app.getSharedPreferences("textsentry_settings", Context.MODE_PRIVATE)
-                    .edit().putLong("roundup_cursor", start).commit();
+                    .edit().putInt("roundup_days", 1).putLong("roundup_cursor", start).commit();
             RoundupWorker.runCheck(app, start + 86_400_000L);
             assertNull(find(manager));
             String id = store.add("+15550001111", "Synthetic private content", .99, "STOP", "submitting", "sms");
@@ -42,8 +42,16 @@ public class RoundupNotificationTest {
             RoundupWorker.cancelNotification(app);
             RoundupWorker.runCheck(app, now);
             assertNull(find(manager));
+            // A later interval can report a new send; disabling cancels it immediately.
+            long next = now + 86_400_000L;
+            HistoryStore later = new HistoryStore(app, () -> now + 1);
+            String nextId = later.add("+15550001112", "Second synthetic message", .99,
+                    "STOP", "submitting", "sms");
+            later.markSendResult(nextId, true);
+            RoundupWorker.runCheck(app, next);
+            assertNotNull(find(manager));
             RoundupWorker.setFrequency(app, 0);
-            RoundupWorker.runCheck(app, now + 7 * 86_400_000L);
+            RoundupWorker.runCheck(app, next + 7 * 86_400_000L);
             assertNull(find(manager));
         } finally {
             RoundupWorker.setFrequency(app, 0);
