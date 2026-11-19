@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="open_history" type="id" />
+    <item name="open_settings" type="id" />
+    <item name="sms_help" type="id" />
+    <item name="battery_help" type="id" />
+</resources>

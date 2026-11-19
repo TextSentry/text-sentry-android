@@ -1,8 +1,13 @@
 package org.textsentry.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.text.InputType;
+import android.view.View;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -12,36 +17,27 @@ import android.widget.TextView;
 public final class PlayUi {
     private PlayUi() {}
 
-    public static void show(Activity activity, Settings settings, KeyVault vault) {
-        LinearLayout root = UiKit.screen(activity, "Less spam. More control.", false);
-
-        LinearLayout intro = UiKit.card(activity, root, UiKit.HIGHLIGHT);
-        UiKit.heading(activity, intro, "Message review");
-        UiKit.chip(activity, intro, AnalysisAccess.status(activity));
-        UiKit.button(activity, intro, "History", false, () ->
-                activity.startActivity(new Intent(activity, HistoryActivity.class)));
-        UiKit.button(activity, intro, "Settings", false, () ->
-                activity.startActivity(new Intent(activity, SettingsActivity.class)));
-        UiKit.button(activity, intro, "Account", false, () ->
-                activity.startActivity(new Intent(activity, AccountActivity.class)));
+    static EditText show(Activity activity, Settings settings, String incoming) {
+        LinearLayout root = UiKit.home(activity);
+        UiKit.title(activity, root, "Review a message");
+        UiKit.description(activity, root, "Paste a text or share it from your messaging app.");
 
         LinearLayout review = UiKit.card(activity, root, 0xFFFFFFFF);
-        UiKit.heading(activity, review, "Analyze a message");
-        String incoming = "";
-        Intent incomingIntent = activity.getIntent();
-        if (Intent.ACTION_SEND.equals(incomingIntent.getAction())
-                && "text/plain".equals(incomingIntent.getType())) {
-            CharSequence shared = incomingIntent.getCharSequenceExtra(Intent.EXTRA_TEXT);
-            if (shared != null) incoming = shared.subSequence(0, Math.min(1600, shared.length())).toString();
-        }
         EditText message = UiKit.input(activity, review, "Message", incoming, true, false);
+        message.setHint("Paste message text");
         CheckBox consent = new CheckBox(activity);
-        consent.setText("Send this text to the AI provider for analysis");
-        consent.setChecked(false);
+        consent.setText("Send this text to my AI provider for analysis");
+        consent.setTextColor(UiKit.INK);
+        consent.setMinHeight(UiKit.dp(activity, 48));
         review.addView(consent);
         TextView outcome = UiKit.description(activity, review, "");
-        EditText response = UiKit.input(activity, review, "Suggested reply (editable)", "", true, false);
-        UiKit.button(activity, review, "Analyze message", true, () -> {
+        outcome.setVisibility(View.GONE);
+        outcome.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        Button analyze = UiKit.button(activity, review, "Analyze message", true, () -> {});
+        String[] suggestedReply = {""};
+        analyze.setOnClickListener(button -> {
+            outcome.setVisibility(View.VISIBLE);
+            suggestedReply[0] = "";
             if (!consent.isChecked()) {
                 outcome.setText("Please consent to this analysis first.");
                 return;
@@ -68,7 +64,10 @@ public final class PlayUi {
             }
             final double threshold = settings.confidence() / 100.0;
             consent.setChecked(false);
-            outcome.setText("Analyzing with Jev…");
+            consent.setEnabled(false);
+            message.setEnabled(false);
+            analyze.setEnabled(false);
+            outcome.setText("Analyzing…");
             new Thread(() -> {
                 String status, suggestion;
                 try {
@@ -79,10 +78,8 @@ public final class PlayUi {
                     new HistoryStore(activity).add("Manual review", input, evaluation.confidence,
                             answer.shouldReply ? "STOP" : "",
                             answer.shouldReply ? "manual_suggestion" : "no_reply", "manual");
-                    status = answer.shouldReply
-                            ? "Suggested reply (" + Math.round(evaluation.confidence * 100)
-                                + "%). Review before composing."
-                            : "No reply recommended (" + Math.round(evaluation.confidence * 100) + "%).";
+                    status = (answer.shouldReply ? "Suggested reply: STOP" : "No reply recommended")
+                            + " · " + Math.round(evaluation.confidence * 100) + "% match";
                     suggestion = answer.shouldReply ? "STOP" : "";
                 } catch (Exception ignored) {
                     status = "Analysis failed. Check your account/key or connection.";
@@ -90,21 +87,39 @@ public final class PlayUi {
                 }
                 String result = status, draft = suggestion;
                 activity.runOnUiThread(() -> {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
                     outcome.setText(result);
-                    response.setText(draft);
+                    suggestedReply[0] = draft;
+                    consent.setEnabled(true);
+                    message.setEnabled(true);
+                    analyze.setEnabled(true);
                 });
             }).start();
         });
 
-        LinearLayout compose = UiKit.card(activity, root, 0xFFFFFFFF);
-        UiKit.heading(activity, compose, "Optional reply");
-        EditText number = UiKit.input(activity, compose, "Recipient number", "", false, false);
-        UiKit.button(activity, compose, "Open SMS composer  ↗", false, () -> {
+        UiKit.link(activity, review, "Compose a reply", () -> composeReply(activity, suggestedReply[0]));
+        return message;
+    }
+
+    private static void composeReply(Activity activity, String suggestion) {
+        LinearLayout form = UiKit.vertical(activity);
+        int padding = UiKit.dp(activity, 24);
+        form.setPaddingRelative(padding, 0, padding, padding);
+        EditText number = UiKit.input(activity, form, "Recipient number", "", false, false);
+        number.setInputType(InputType.TYPE_CLASS_PHONE);
+        EditText reply = UiKit.input(activity, form, "Reply", suggestion, true, false);
+        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle("Compose a reply")
+                .setView(UiKit.scrollable(activity, form)).setPositiveButton("Open SMS app", null)
+                .setNegativeButton("Cancel", null).show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String to = number.getText().toString().trim();
-            String body = response.getText().toString().trim();
-            if (!to.matches("\\+?[0-9][0-9 ()-]{7,19}") ||
-                    !SystemOneClient.validReply(body)) {
-                outcome.setText("Enter a valid phone number and reply of up to 120 characters.");
+            String body = reply.getText().toString().trim();
+            if (!to.matches("\\+?[0-9][0-9 ()-]{7,19}")) {
+                number.setError("Enter a valid phone number");
+                return;
+            }
+            if (!SystemOneClient.validReply(body)) {
+                reply.setError("Enter a reply of up to 120 characters");
                 return;
             }
             Intent intent = new Intent(Intent.ACTION_SENDTO);
@@ -112,10 +127,10 @@ public final class PlayUi {
             intent.putExtra("sms_body", body);
             try {
                 activity.startActivity(intent);
-            } catch (android.content.ActivityNotFoundException e) {
-                outcome.setText("No SMS app is available for manual composition.");
+                dialog.dismiss();
+            } catch (ActivityNotFoundException ignored) {
+                UiKit.info(activity, "SMS app unavailable", "Install an SMS app to compose a reply.");
             }
         });
-
     }
 }

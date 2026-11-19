@@ -186,12 +186,10 @@ public final class AccountActivity extends Activity {
 
     private void render() {
         boolean welcome = getIntent().getBooleanExtra("welcome", false);
-        LinearLayout root = UiKit.screen(this,
-                welcome ? "Continue with Google" : "Account", !welcome);
+        LinearLayout root = UiKit.screen(this, welcome ? "" : "Account", !welcome);
+        UiKit.title(this, root, continueSetup ? "Activate subscription"
+                : welcome ? "Sign in with Google" : "Google account");
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, card, continueSetup ? "Activate subscription" : welcome ? "Sign in or sign up" : "Google account");
-        UiKit.description(this, card,
-                continueSetup ? "Subscribe securely. We verify payment automatically." : welcome ? "One account. Less spam." : "Manage your Google sign-in.");
         status = UiKit.description(this, card, "");
         refreshStatus();
         subscriptionStatus = null;
@@ -200,7 +198,7 @@ public final class AccountActivity extends Activity {
         if (sessions.hasSession() && "sideload".equals(BuildConfig.FLAVOR)) {
             // Always explain the subscription path, even in a checkout-disabled
             // public prerelease. Don't silently omit it and confuse users.
-            UiKit.heading(this, card, "Subscription");
+            if (!continueSetup) UiKit.heading(this, card, "Subscription");
             subscriptionStatus = UiKit.description(this, card, "Checking subscription…");
             if (BuildConfig.WEB_CHECKOUT_ENABLED) {
                 subscribeButton = UiKit.button(this, card, "Subscribe to TextSentry",
@@ -209,8 +207,6 @@ public final class AccountActivity extends Activity {
                     subscribeButton.setText("Checking subscription…");
                     subscribeButton.setEnabled(false);
                 }
-                UiKit.description(this, card,
-                        "Secure browser checkout. Your subscription is verified by TextSentry.");
             } else {
                 subscribeButton = UiKit.button(this, card,
                         "Subscription checkout unavailable in this build", false,
@@ -259,7 +255,6 @@ public final class AccountActivity extends Activity {
         if (sessions.hasSession() && !continueSetup && !welcome) {
             UiKit.button(this, card, "Refresh key", false, this::fetchManagedKey);
         }
-        UiKit.description(this, root, "Your key stays in memory. No SMS goes to AWS.");
     }
 
     private void refreshStatus() {

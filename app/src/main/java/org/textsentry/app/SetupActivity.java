@@ -98,23 +98,19 @@ public final class SetupActivity extends Activity {
         finish();
     }
 
-    private LinearLayout stage(String label, String title, String subtitle) {
+    private LinearLayout stage(String title, String subtitle) {
         LinearLayout root = UiKit.screen(this, "", false);
-        TextView step = UiKit.text(this, label, 12, UiKit.MUTED, true);
-        step.setPadding(0, UiKit.dp(this, 12), 0, UiKit.dp(this, 8));
-        root.addView(step);
-        TextView heading = UiKit.text(this, title, 29, UiKit.INK, true);
-        heading.setLetterSpacing(-0.035f);
-        root.addView(heading);
-        TextView description = UiKit.text(this, subtitle, 15, UiKit.MUTED, false);
-        description.setPadding(0, UiKit.dp(this, 10), 0, UiKit.dp(this, 18));
-        root.addView(description);
+        UiKit.title(this, root, title);
+        TextView description = UiKit.description(this, root, subtitle);
+        description.setTextSize(16);
+        description.setPadding(0, UiKit.dp(this, 8), 0, UiKit.dp(this, 20));
         return root;
     }
 
     private void renderLogin() {
-        LinearLayout root = stage("GET STARTED", "Stop sorting through spam.",
-                "Sign in to subscribe, or use your own TypeSafe key.");
+        LinearLayout root = showingOwnKey
+                ? stage("Connect your key", "Enter your TypeSafe API key to get started.")
+                : stage("Get started", "Sign in with Google to set up TextSentry.");
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
         if (!showingOwnKey) {
             UiKit.googleSignInButton(this, card, () -> {
@@ -150,20 +146,14 @@ public final class SetupActivity extends Activity {
                 renderLogin();
             });
         }
-        TextView note = UiKit.description(this, root,
-                "Private by design. Your texts never reach TextSentry servers.");
-        note.setGravity(Gravity.CENTER);
     }
 
     private void renderSubscription() {
-        LinearLayout root = stage("SUBSCRIPTION", "Activate TextSentry.",
-                "Subscribe to unlock managed AI access.");
+        LinearLayout root = stage("Activate TextSentry", "Connect your subscription to continue.");
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
         if (BuildConfig.WEB_CHECKOUT_ENABLED) {
             UiKit.button(this, card, "Subscribe to TextSentry", true, () ->
                     startActivity(SubscriptionOnboarding.continueSetupIntent(this)));
-            UiKit.description(this, card,
-                    "Already subscribed? Continue to automatically verify your account.");
         } else {
             UiKit.description(this, card,
                     "Subscriptions are unavailable in this build. Install the latest signed "
@@ -181,41 +171,29 @@ public final class SetupActivity extends Activity {
         });
     }
 
-    /** One focused permission step. Sending STOP and MMS inbox access remain
-     * opt-in on Home; a blocked installer permission cannot trap onboarding. */
+    /** Incoming access is optional; monitoring still requires a separate action on Home. */
     private void renderPermissions() {
-        LinearLayout root = stage("PERMISSIONS", "Allow SMS access.",
-                "TextSentry needs incoming SMS permission to monitor messages.");
-        LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
         boolean allowed = SetupPermissions.hasIncoming(this);
-        UiKit.chip(this, card, allowed
-                ? "✓ Incoming SMS allowed" : "○ Incoming SMS not allowed");
-        if (!allowed) {
-            if (smsPermissionStep.showAppSettings(false)) {
-                SmsPermissionGuideUi.show(this, card);
-                UiKit.button(this, card, "Open app settings", true, () -> {
-                    smsPermissionStep.settingsOpened();
-                    SetupPermissions.openAppSettings(this);
-                });
-            } else {
-                UiKit.button(this, card, "Allow incoming SMS", true, this::requestIncomingSms);
-            }
-            smallLink(root, "Continue without monitoring", this::finishPermissions);
-        } else {
-            UiKit.heading(this, card, "Keep monitoring reliable");
-            UiKit.description(this, card,
-                    "Recommended: Open App battery usage (or Battery) and select "
-                            + "Unrestricted. This is optional and may use more battery.");
-            if (!SetupPermissions.unrestricted(this)) {
-                UiKit.button(this, card, "Open battery settings", false,
-                        () -> SetupPermissions.openBatterySettings(this));
-            }
-            UiKit.button(this, root, "Continue to TextSentry", true,
-                    this::finishPermissions);
+        LinearLayout root = allowed
+                ? stage("SMS access granted", "You can start monitoring when you're ready.")
+                : stage("Allow SMS access", "TextSentry needs SMS access to monitor incoming messages.");
+        if (allowed) {
+            UiKit.button(this, root, "Continue to TextSentry", true, this::finishPermissions);
+            return;
         }
-        UiKit.description(this, root,
-                "Monitoring starts paused. Automatic STOP replies and MMS require "
-                        + "separate consent on the main page.");
+        if (smsPermissionStep.showAppSettings(false)) {
+            UiKit.button(this, root, "Open app settings", true, this::openSmsSettings);
+            smallLink(root, "SMS permission help", () ->
+                    SmsPermissionGuideUi.show(this, this::openSmsSettings));
+        } else {
+            UiKit.button(this, root, "Allow incoming SMS", true, this::requestIncomingSms);
+        }
+        smallLink(root, "Continue without monitoring", this::finishPermissions);
+    }
+
+    private void openSmsSettings() {
+        smsPermissionStep.settingsOpened();
+        SetupPermissions.openAppSettings(this);
     }
 
     private void finishPermissions() {
@@ -253,6 +231,7 @@ public final class SetupActivity extends Activity {
     private void smallLink(LinearLayout parent, String label, Runnable action) {
         TextView link = UiKit.description(this, parent, label);
         link.setGravity(Gravity.CENTER);
+        link.setMinHeight(UiKit.dp(this, 48));
         link.setTextSize(13);
         link.setTextColor(UiKit.INK);
         link.setPaintFlags(link.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);

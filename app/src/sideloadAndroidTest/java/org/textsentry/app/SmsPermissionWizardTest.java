@@ -37,7 +37,7 @@ public class SmsPermissionWizardTest {
                 assertTrue(SetupFlow.subscriptionHandoffPending(context));
             } else {
                 View root = activity.getWindow().getDecorView();
-                assertTrue(contains(root, "Activate TextSentry."));
+                assertTrue(contains(root, "Activate TextSentry"));
                 assertFalse(contains(root, "Continue to SMS permissions"));
                 assertFalse(contains(root, "Continue to battery settings"));
                 assertFalse(contains(root, "Continue to SMS permissions without a key"));
@@ -62,7 +62,8 @@ public class SmsPermissionWizardTest {
                     new Intent(context, SetupActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             View root = activity.getWindow().getDecorView();
-            assertTrue(contains(root, "Allow SMS access."));
+            assertTrue(contains(root, SetupPermissions.hasIncoming(activity)
+                    ? "SMS access granted" : "Allow SMS access"));
             assertFalse(SetupFlow.isComplete(context));
             if (SetupPermissions.hasIncoming(activity)) {
                 assertTrue(contains(root, "Continue to TextSentry"));
@@ -99,7 +100,8 @@ public class SmsPermissionWizardTest {
                     new Intent(context, SetupActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             assertFalse(SetupFlow.isComplete(context));
-            assertTrue(contains(activity.getWindow().getDecorView(), "Allow SMS access."));
+            assertTrue(contains(activity.getWindow().getDecorView(), SetupPermissions.hasIncoming(activity)
+                    ? "SMS access granted" : "Allow SMS access"));
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
             new AuthSessionStore(context).clear();
@@ -129,18 +131,9 @@ public class SmsPermissionWizardTest {
             assertTrue(contains(root, "Open app settings"));
             assertFalse(contains(root, "Allow incoming SMS"));
             assertFalse(SetupFlow.isComplete(context));
-            for (String instruction : new String[]{
-                    "1. Tap Open app settings below.",
-                    "2. If shown, tap the three-dot menu (top right), then Allow restricted settings.",
-                    "3. Open Permissions → SMS → Allow, if SMS is available.",
-                    "4. Return to TextSentry. We'll ask for SMS permission again."
-            }) {
-                TextView step = findText(root, instruction);
-                assertNotNull("Missing instruction: " + instruction, step);
-                float sp = step.getTextSize() /
-                        context.getResources().getDisplayMetrics().scaledDensity;
-                assertTrue("Unreadable instruction: " + instruction, sp >= 18f);
-            }
+            assertFalse(contains(root, "2. Open Permissions → SMS and choose Allow if available."));
+            assertHelpOpens(findText(root, "SMS permission help"),
+                    "2. Open Permissions → SMS and choose Allow if available.");
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
             key.clear();
@@ -170,7 +163,9 @@ public class SmsPermissionWizardTest {
                             new int[]{android.content.pm.PackageManager.PERMISSION_DENIED}));
             assertFalse(contains(root, "Allow incoming SMS"));
             assertTrue(contains(root, "Open app settings"));
-            assertTrue(contains(root, "3. Open Permissions → SMS → Allow, if SMS is available."));
+            assertFalse(contains(root, "2. Open Permissions → SMS and choose Allow if available."));
+            assertHelpOpens(root.findViewById(R.id.sms_help),
+                    "2. Open Permissions → SMS and choose Allow if available.");
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
             key.clear();
@@ -195,6 +190,10 @@ public class SmsPermissionWizardTest {
             View root = activity.getWindow().getDecorView();
             assertTrue(contains(root, "Start Monitoring"));
             assertFalse(contains(root, "Start preview"));
+            assertNotNull(root.findViewById(R.id.open_history));
+            assertNotNull(root.findViewById(R.id.open_settings));
+            assertFalse(contains(root, "Check for updates"));
+            assertFalse(contains(root, "Automatic STOP replies"));
             assertFalse(contains(root, "Automatic picture-message filtering"));
             assertFalse(contains(root, "Enable automatic MMS filtering"));
             assertFalse(contains(root, "Turn off MMS filtering"));
@@ -214,6 +213,7 @@ public class SmsPermissionWizardTest {
         SetupFlow.reset(context);
         KeyVault key = new KeyVault(context);
         key.save("synthetic-battery-guide-test");
+        new Settings(context).pause();
         SetupFlow.complete(context);
         Activity activity = null;
         try {
@@ -223,22 +223,31 @@ public class SmsPermissionWizardTest {
             View root = activity.getWindow().getDecorView();
             assertTrue(contains(root, "SMS access"));
             assertTrue(contains(root, "Background operation"));
-            assertTrue(contains(root, "Open TextSentry app settings"));
-            for (String instruction : new String[]{
-                    "1. Open TextSentry app settings below.",
-                    "2. Tap App battery usage (or Battery).",
-                    "3. Choose Unrestricted."
-            }) {
-                TextView step = findText(root, instruction);
-                assertNotNull("Missing step: " + instruction, step);
-                float sp = step.getTextSize() /
-                        context.getResources().getDisplayMetrics().scaledDensity;
-                assertTrue("Unreadably small: " + instruction, sp >= 18f);
-            }
+            assertTrue(contains(root, "Automatic STOP replies"));
+            assertTrue(contains(root, "Check for updates"));
+            assertFalse(contains(root, "3. Choose Unrestricted."));
+            assertHelpOpens(root.findViewById(R.id.battery_help), "3. Choose Unrestricted.");
+            assertFalse(new Settings(context).autoSend());
         } finally {
             if (activity != null) activity.runOnUiThread(activity::finish);
             key.clear();
             SetupFlow.reset(context);
+        }
+    }
+
+    private void assertHelpOpens(View help, String instruction) {
+        assertNotNull(help);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(help::performClick);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            TextView step = null;
+            for (View window : android.view.inspector.WindowInspector.getGlobalWindowViews()) {
+                step = findText(window, instruction);
+                if (step != null) break;
+            }
+            assertNotNull("Help should show the instruction: " + instruction, step);
+            float sp = step.getTextSize() / context.getResources().getDisplayMetrics().scaledDensity;
+            assertTrue("Help text should remain readable", sp >= 18f);
         }
     }
 

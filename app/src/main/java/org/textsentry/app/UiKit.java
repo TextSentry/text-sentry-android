@@ -1,10 +1,13 @@
 package org.textsentry.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.text.InputType;
 import android.view.Gravity;
@@ -12,9 +15,11 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.Window;
-import android.widget.FrameLayout;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -66,26 +71,68 @@ public final class UiKit {
         }
     }
 
-    public static LinearLayout screen(Activity a, String subtitle, boolean back) {
+    public static LinearLayout screen(Activity a, String title, boolean back) {
+        return screen(a, title, back, false);
+    }
+
+    static LinearLayout home(Activity a) {
+        return screen(a, "", false, true);
+    }
+
+    private static LinearLayout screen(Activity a, String title, boolean back, boolean home) {
         styleSystemBars(a);
         FrameLayout frame = new FrameLayout(a);
         frame.setBackgroundColor(BG);
+        LinearLayout page = vertical(a);
+        frame.addView(page, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout toolbar = row(a);
+        toolbar.setMinimumHeight(dp(a, 64));
+        toolbar.setBackgroundColor(NIGHT);
+        toolbar.setPaddingRelative(dp(a, back ? 8 : 20), 0, dp(a, 12), 0);
+        page.addView(toolbar, new LinearLayout.LayoutParams(-1, -2));
+        if (back) {
+            iconButton(a, toolbar, R.drawable.ic_back, "Back", Color.WHITE, a::finish);
+        } else {
+            ImageView icon = new ImageView(a);
+            icon.setImageResource(R.mipmap.ic_launcher);
+            icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LinearLayout.LayoutParams logo = new LinearLayout.LayoutParams(dp(a, 34), dp(a, 34));
+            logo.setMarginEnd(dp(a, 10));
+            toolbar.addView(icon, logo);
+        }
+        TextView heading = text(a, title.isEmpty() ? "TextSentry" : title, 21, Color.WHITE, true);
+        heading.setAccessibilityHeading(true);
+        toolbar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
+        if (home) {
+            iconButton(a, toolbar, R.drawable.ic_history, "History", Color.WHITE,
+                    () -> a.startActivity(new Intent(a, HistoryActivity.class))).setId(R.id.open_history);
+            iconButton(a, toolbar, R.drawable.ic_settings, "Settings", Color.WHITE,
+                    () -> a.startActivity(new Intent(a, SettingsActivity.class))).setId(R.id.open_settings);
+        }
+
         ScrollView scroll = new ScrollView(a);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(BG);
-        LinearLayout body = vertical(a);
-        scroll.addView(body);
-        frame.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        FrameLayout scrollContent = new FrameLayout(a);
+        scroll.addView(scrollContent);
+        LinearLayout content = new LinearLayout(a) {
+            @Override protected void onMeasure(int width, int height) {
+                int maxWidth = dp(a, 600);
+                super.onMeasure(MeasureSpec.makeMeasureSpec(
+                        Math.min(MeasureSpec.getSize(width), maxWidth), MeasureSpec.EXACTLY), height);
+            }
+        };
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPaddingRelative(dp(a, 20), dp(a, 24), dp(a, 20), dp(a, 28));
+        scrollContent.addView(content, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
 
-        // This fixed scrim remains dark when scrolling content behind the status bar.
-        // Window#setStatusBarColor alone does not work on Android 15+ with targetSdk 36.
+        // Android 15+ requires an in-app scrim and explicit insets for edge-to-edge.
         View statusScrim = new View(a);
         statusScrim.setBackgroundColor(NIGHT);
         frame.addView(statusScrim, new FrameLayout.LayoutParams(-1, 0, Gravity.TOP));
         a.setContentView(frame);
         if (Build.VERSION.SDK_INT >= 30) {
-            // PhoneWindow has no decor view before setContentView; obtaining its
-            // controller in styleSystemBars would crash when first opening the app.
             WindowInsetsController controller = a.getWindow().getInsetsController();
             if (controller != null) {
                 controller.setSystemBarsAppearance(
@@ -94,8 +141,10 @@ public final class UiKit {
                                 | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
             frame.setOnApplyWindowInsetsListener((v, insets) -> {
-                android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
-                scroll.setPadding(0, bars.top, 0, bars.bottom);
+                android.graphics.Insets bars = insets.getInsets(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                int bottom = Math.max(bars.bottom, insets.getInsets(WindowInsets.Type.ime()).bottom);
+                page.setPadding(bars.left, bars.top, bars.right, bottom);
                 FrameLayout.LayoutParams params =
                         (FrameLayout.LayoutParams) statusScrim.getLayoutParams();
                 if (params.height != bars.top) {
@@ -106,44 +155,82 @@ public final class UiKit {
             });
             frame.requestApplyInsets();
         }
-        LinearLayout header = vertical(a);
-        header.setBackgroundColor(NIGHT);
-        header.setPadding(dp(a, 22), dp(a, 14), dp(a, 22), dp(a, 18));
-        body.addView(header);
-        LinearLayout brand = new LinearLayout(a);
-        brand.setOrientation(LinearLayout.HORIZONTAL);
-        brand.setGravity(Gravity.CENTER_VERTICAL);
-        header.addView(brand);
-        if (back) {
-            TextView backButton = text(a, "‹", 32, ACCENT, true);
-            backButton.setGravity(Gravity.CENTER_VERTICAL);
-            backButton.setContentDescription("Back");
-            LinearLayout.LayoutParams backParams =
-                    new LinearLayout.LayoutParams(dp(a, 40), dp(a, 46));
-            brand.addView(backButton, backParams);
-            backButton.setOnClickListener(v -> a.finish());
-        }
-        android.widget.ImageView icon = new android.widget.ImageView(a);
-        icon.setImageResource(R.mipmap.ic_launcher);
-        icon.setContentDescription("TextSentry icon");
-        LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(a, 40), dp(a, 40));
-        logoParams.rightMargin = dp(a, 10);
-        brand.addView(icon, logoParams);
-        TextView wordmark = text(a, "TextSentry", 25, Color.WHITE, true);
-        wordmark.setLetterSpacing(-0.055f);
-        brand.addView(wordmark);
-        TextView dot = text(a, ".", 25, ACCENT, true);
-        brand.addView(dot);
-        if (subtitle != null && !subtitle.isEmpty()) {
-            TextView sub = text(a, subtitle, 13, 0xFFD0DFFF, false);
-            sub.setPadding(0, dp(a, 10), 0, 0);
-            header.addView(sub);
-        }
-        LinearLayout content = vertical(a);
-        content.setPadding(dp(a, 20), dp(a, 26), dp(a, 20), dp(a, 28));
-        body.addView(content);
         return content;
+    }
+
+    static ScrollView scrollable(Activity a, View content) {
+        ScrollView scroll = new ScrollView(a);
+        scroll.addView(content);
+        return scroll;
+    }
+
+    static LinearLayout row(Activity a) {
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        return row;
+    }
+
+    static RippleDrawable interaction(Activity a, int color, int radius, int border) {
+        int rounded = dp(a, radius);
+        int ink = color == NIGHT || color == Color.TRANSPARENT ? 0x2249A8DC : 0x22145180;
+        return new RippleDrawable(ColorStateList.valueOf(ink),
+                shape(color, rounded, border), shape(Color.WHITE, rounded, 0));
+    }
+
+    private static ImageButton iconButton(Activity a, LinearLayout parent, int icon,
+                                          String label, int tint, Runnable action) {
+        ImageButton button = new ImageButton(a);
+        button.setImageResource(icon);
+        button.setImageTintList(ColorStateList.valueOf(tint));
+        button.setBackground(interaction(a, Color.TRANSPARENT, 24, 0));
+        button.setContentDescription(label);
+        button.setTooltipText(label);
+        parent.addView(button, new LinearLayout.LayoutParams(dp(a, 48), dp(a, 48)));
+        button.setOnClickListener(v -> action.run());
+        return button;
+    }
+
+    static ImageButton sectionHelp(Activity a, LinearLayout parent, String title, Runnable help) {
+        LinearLayout header = row(a);
+        parent.addView(header);
+        TextView label = text(a, title, 18, INK, true);
+        label.setAccessibilityHeading(true);
+        header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
+        return iconButton(a, header, R.drawable.ic_info, "About " + title, MUTED, help);
+    }
+
+    static void info(Activity a, String title, String message) {
+        new AlertDialog.Builder(a).setTitle(title).setMessage(message)
+                .setPositiveButton("Done", null).show();
+    }
+
+    static TextView title(Activity a, LinearLayout parent, String title) {
+        TextView heading = text(a, title, 30, INK, true);
+        heading.setLetterSpacing(-0.025f);
+        heading.setAccessibilityHeading(true);
+        parent.addView(heading);
+        return heading;
+    }
+
+    static void link(Activity a, LinearLayout parent, String title, Runnable action) {
+        Button link = new Button(a);
+        link.setText(title);
+        link.setTextSize(15);
+        link.setAllCaps(false);
+        link.setTextColor(INK);
+        link.setMinHeight(dp(a, 48));
+        link.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        link.setPaddingRelative(0, dp(a, 8), dp(a, 6), dp(a, 8));
+        link.setBackground(interaction(a, Color.TRANSPARENT, 10, 0));
+        android.graphics.drawable.Drawable arrow = a.getDrawable(R.drawable.ic_chevron);
+        if (arrow != null) {
+            arrow.setTint(MUTED);
+            arrow.setAutoMirrored(true);
+            link.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, arrow, null);
+        }
+        parent.addView(link, new LinearLayout.LayoutParams(-1, -2));
+        link.setOnClickListener(v -> action.run());
     }
 
     public static TextView text(Activity a, String value, float size, int color, boolean bold) {
@@ -168,6 +255,7 @@ public final class UiKit {
 
     public static TextView heading(Activity a, LinearLayout parent, String title) {
         TextView t = text(a, title, 19, INK, true);
+        t.setAccessibilityHeading(true);
         parent.addView(t);
         return t;
     }
@@ -190,9 +278,16 @@ public final class UiKit {
         edit.setSingleLine(!multi);
         edit.setPadding(dp(a, 12), dp(a, 11), dp(a, 12), dp(a, 11));
         edit.setBackground(shape(Color.WHITE, dp(a, 9), 0xFFDEE7F7));
-        if (multi) { edit.setMinLines(4); edit.setGravity(Gravity.TOP); }
+        if (multi) {
+            edit.setMinLines(4);
+            edit.setMaxLines(10);
+            edit.setGravity(Gravity.TOP);
+        }
         if (secret) edit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         edit.setText(value);
+        edit.setId(View.generateViewId());
+        edit.setSaveEnabled(false);
+        l.setLabelFor(edit.getId());
         parent.addView(edit, new LinearLayout.LayoutParams(-1, -2));
         return edit;
     }
@@ -202,12 +297,16 @@ public final class UiKit {
         Button b = new Button(a);
         b.setText(title);
         b.setAllCaps(false);
-        b.setTextSize(14);
+        b.setTextSize(15);
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        b.setTextColor(primary ? NIGHT : INK);
-        b.setBackground(shape(primary ? ACCENT : HIGHLIGHT, dp(a, 11), 0));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(a, 52));
-        lp.topMargin = dp(a, 14);
+        b.setTextColor(new ColorStateList(
+                new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
+                new int[]{MUTED, primary ? NIGHT : INK}));
+        b.setBackground(interaction(a, primary ? ACCENT : HIGHLIGHT, 14, 0));
+        b.setMinHeight(dp(a, 52));
+        b.setPaddingRelative(dp(a, 12), dp(a, 10), dp(a, 12), dp(a, 10));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.topMargin = dp(a, 12);
         parent.addView(b, lp);
         b.setOnClickListener(v -> action.run());
         return b;
@@ -219,8 +318,9 @@ public final class UiKit {
         LinearLayout surface = new LinearLayout(a);
         surface.setOrientation(LinearLayout.HORIZONTAL);
         surface.setGravity(Gravity.CENTER);
-        surface.setPadding(dp(a, 12), 0, dp(a, 12), 0);
-        surface.setBackground(shape(Color.WHITE, dp(a, 14), 0xFF747775));
+        surface.setPadding(dp(a, 12), dp(a, 12), dp(a, 12), dp(a, 12));
+        surface.setMinimumHeight(dp(a, 56));
+        surface.setBackground(interaction(a, Color.WHITE, 14, 0xFF747775));
         surface.setClickable(true);
         surface.setFocusable(true);
         surface.setContentDescription("Sign in with Google");
@@ -231,8 +331,8 @@ public final class UiKit {
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
         labelParams.leftMargin = dp(a, 10);
         surface.addView(label, labelParams);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(a, 56));
-        params.topMargin = dp(a, 20);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(a, 8);
         parent.addView(surface, params);
         surface.setOnClickListener(v -> action.run());
         return surface;

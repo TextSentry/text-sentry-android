@@ -3,8 +3,9 @@ package org.textsentry.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.content.Intent;
+import android.text.TextUtils;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.view.Gravity;
@@ -24,8 +25,18 @@ public final class HistoryActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         if (!SetupGate.enforce(this)) return;
-        render();
+        if (state != null) {
+            repliesOnly = state.getBoolean("replies_only");
+            visibleLimit = state.getInt("visible_limit", 50);
+        }
     }
+
+    @Override protected void onSaveInstanceState(Bundle out) {
+        out.putBoolean("replies_only", repliesOnly);
+        out.putInt("visible_limit", visibleLimit);
+        super.onSaveInstanceState(out);
+    }
+
     @Override protected void onResume() {
         super.onResume();
         if (!SetupGate.enforce(this)) return;
@@ -46,88 +57,78 @@ public final class HistoryActivity extends Activity {
             UiKit.description(this, card, "Could not unlock local message history. No entries were deleted.");
             return;
         }
-        LinearLayout summary = UiKit.card(this, root, UiKit.HIGHLIGHT);
-        UiKit.heading(this, summary, "Activity");
-        UiKit.description(this, summary,
-                counts.total + " evaluated · " + counts.replied + " sent/submitted · " + counts.preview + " previews");
-        UiKit.description(this, summary, "Encrypted on this device.");
-        UiKit.button(this, summary, "Manage exceptions", false, () ->
-                startActivity(new Intent(this, ExceptionsActivity.class)));
-        UiKit.button(this, summary, repliesOnly ? "Show all decisions" : "Show replies only",
-                false, () -> { repliesOnly = !repliesOnly; visibleLimit = 50; render(); });
-
-
-        int visible = 0;
-        for (HistoryStore.Entry item : entries) {
-            if (repliesOnly && !("sent".equals(item.status) || "submitting".equals(item.status))) {
-                continue;
-            }
-            visible++;
-            LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
-            LinearLayout cardHeader = new LinearLayout(this);
-            cardHeader.setOrientation(LinearLayout.HORIZONTAL);
-            cardHeader.setGravity(Gravity.CENTER_VERTICAL);
-            card.addView(cardHeader);
-            TextView sender = UiKit.text(this,
-                    item.sender.isEmpty() ? "Manual review" : item.sender, 19, UiKit.INK, true);
-            cardHeader.addView(sender, new LinearLayout.LayoutParams(0, -2, 1f));
-            TextView menuButton = UiKit.text(this, "⋮", 28, UiKit.INK, true);
-            menuButton.setGravity(Gravity.CENTER);
-            menuButton.setBackground(UiKit.shape(UiKit.HIGHLIGHT, UiKit.dp(this, 10), 0));
-            menuButton.setContentDescription("Message options");
-            menuButton.setClickable(true);
-            menuButton.setFocusable(true);
-            cardHeader.addView(menuButton, new LinearLayout.LayoutParams(
-                    UiKit.dp(this, 48), UiKit.dp(this, 48)));
-            menuButton.setOnClickListener(v -> showMessageActions(menuButton, item));
-            UiKit.description(this, card,
-                    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
-                            .format(new Date(item.timestamp)));
-            if ("mms".equals(item.source)) {
-                UiKit.chip(this, card, "Multimedia message (MMS) · text only");
-            }
-            UiKit.chip(this, card, statusLabel(item.status));
-
-            android.widget.TextView body = UiKit.text(this, item.body, 15, UiKit.INK, false);
-            body.setPadding(0, UiKit.dp(this, 5), 0, UiKit.dp(this, 8));
-            card.addView(body);
-            if (Double.isFinite(item.confidence)) {
-                UiKit.description(this, card, "Jev match probability: " +
-                        Math.round(item.confidence * 100) + "%");
-            }
-            if (!item.reply.isEmpty()) UiKit.description(this, card, "Suggested reply: " + item.reply);
-            UiKit.description(this, card, "Deletion: " + item.deletionStatus());
+        if (counts.total > 0 || repliesOnly) {
+            UiKit.button(this, root, repliesOnly ? "Show all decisions" : "Show replies only",
+                    false, () -> { repliesOnly = !repliesOnly; visibleLimit = 50; render(); });
+            UiKit.description(this, root, repliesOnly
+                    ? counts.replied + " replies sent or submitted"
+                    : counts.total + " decisions");
         }
+        for (HistoryStore.Entry entry : entries) addEntry(root, entry);
+
         int totalVisible = repliesOnly ? counts.replied : counts.total;
-        if (visible < totalVisible) {
+        if (entries.size() < totalVisible) {
             UiKit.button(this, root, "Load older messages", false, () -> {
                 visibleLimit += 50;
                 render();
             });
         }
-        if (visible == 0) {
-            LinearLayout empty = UiKit.card(this, root, 0xFFFFFFFF);
-            UiKit.heading(this, empty, repliesOnly ? "No replies yet" : "No history yet");
+        if (entries.isEmpty()) {
+            LinearLayout empty = UiKit.card(this, root, Color.WHITE);
+            UiKit.heading(this, empty, repliesOnly ? "No replies yet" : "No messages reviewed yet");
             UiKit.description(this, empty, repliesOnly
-                    ? "Show all decisions to see previews and ignored messages."
-                    : "Evaluated messages will appear here. Older summaries cannot be restored.");
+                    ? "Show all decisions to see previews and messages that received no reply."
+                    : "Reviewed messages will appear here.");
         }
-        UiKit.button(this, root, "Clear history", false, () ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Clear message history?")
-                        .setMessage("This permanently removes saved message text, confidence scores " +
-                                "and send statuses from TextSentry. It does not delete SMS from the inbox.")
-                        .setPositiveButton("Clear", (dialog, which) -> {
-                            try {
-                                new HistoryStore(this).clear();
-                                new Settings(this).clearHistory();
-                                visibleLimit = 50;
-                                render();
-                            } catch (Exception error) {
-                                new AlertDialog.Builder(this).setMessage(
-                                        "Could not clear local history.").setPositiveButton("OK", null).show();
-                            }
-                        }).setNegativeButton("Cancel", null).show());
+    }
+
+    private void addEntry(LinearLayout root, HistoryStore.Entry entry) {
+        LinearLayout card = UiKit.card(this, root, Color.WHITE);
+        card.setBackground(UiKit.interaction(this, Color.WHITE, 19, 0xFFDEE7F7));
+        card.setFocusable(true);
+        card.setOnClickListener(v -> showDetails(entry));
+
+        LinearLayout header = UiKit.row(this);
+        card.addView(header);
+        LinearLayout senderAndTime = UiKit.vertical(this);
+        header.addView(senderAndTime, new LinearLayout.LayoutParams(0, -2, 1f));
+        UiKit.heading(this, senderAndTime, sender(entry));
+        UiKit.description(this, senderAndTime, formattedTime(entry));
+        TextView menu = UiKit.text(this, "⋮", 24, UiKit.INK, true);
+        menu.setGravity(Gravity.CENTER);
+        menu.setBackground(UiKit.interaction(this, UiKit.HIGHLIGHT, 12, 0));
+        menu.setContentDescription("Message options");
+        menu.setFocusable(true);
+        header.addView(menu, new LinearLayout.LayoutParams(UiKit.dp(this, 48), UiKit.dp(this, 48)));
+        menu.setOnClickListener(v -> showMessageActions(menu, entry));
+
+        TextView preview = UiKit.text(this, entry.body, 15, UiKit.INK, false);
+        preview.setMaxLines(2);
+        preview.setEllipsize(TextUtils.TruncateAt.END);
+        card.addView(preview);
+        UiKit.chip(this, card, statusLabel(entry.status));
+    }
+
+    private void showDetails(HistoryStore.Entry entry) {
+        StringBuilder details = new StringBuilder(formattedTime(entry))
+                .append("\n\n").append(entry.body).append("\n\n")
+                .append(statusLabel(entry.status));
+        if ("mms".equals(entry.source)) details.append(" · MMS text");
+        if (Double.isFinite(entry.confidence)) {
+            details.append("\nJev match probability: ").append(Math.round(entry.confidence * 100)).append("%");
+        }
+        if (!entry.reply.isEmpty()) details.append("\nSuggested reply: ").append(entry.reply);
+        details.append("\nDeletion: ").append(entry.deletionStatus());
+        UiKit.info(this, sender(entry), details.toString());
+    }
+
+    private String sender(HistoryStore.Entry entry) {
+        return entry.sender.isEmpty() ? "Manual review" : entry.sender;
+    }
+
+    private String formattedTime(HistoryStore.Entry entry) {
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                .format(new Date(entry.timestamp));
     }
 
     private void showMessageActions(TextView anchor, HistoryStore.Entry item) {

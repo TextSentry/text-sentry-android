@@ -6,7 +6,7 @@
         <item name="android:statusBarColor">@color/textsentry_night</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">@color/textsentry_paper</item>
-        <item name="android:colorAccent">@color/textsentry_cyan</item>
+        <item name="android:colorAccent">@color/textsentry_control</item>
         <item name="android:colorControlHighlight">@color/textsentry_highlight</item>
         <item name="android:textColorPrimary">@color/textsentry_ink</item>
     </style>

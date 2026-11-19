@@ -2,33 +2,34 @@ package org.textsentry.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import net.openid.appauth.AuthState;
-import net.openid.appauth.AuthorizationService;
-import android.content.ActivityNotFoundException;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import net.openid.appauth.AuthState;
+import net.openid.appauth.AuthorizationService;
 
-/** One intentionally minimal preferences screen shared by both Android flavors. */
+/** Filtering, account and device controls shared by the Android editions. */
 public final class SettingsActivity extends Activity {
+    static final String EXTRA_SMS_ACCESS = "focus_sms_access";
+    private static final int RECEIVE_SMS_REQUEST = 301;
+    private static final int SEND_SMS_REQUEST = 302;
+
     private Settings settings;
     private KeyVault vault;
-    private EditText apiKey;
     private CheckBox voteCategory, politicalCategory, marketingCategory;
-    private TextView generatedInstructions;
-    private TextView confidenceLabel;
-    private TextView keyState;
     private int confidence;
     private int developerTaps;
-    private LinearLayout root, developerCard, smsPermissionCard;
+    private LinearLayout root, developerCard, smsPermissionCard, replyCard;
+    private TextView connectionStatus, batteryStatus;
     private SmsPermissionStep smsPermissionStep = new SmsPermissionStep();
-    private static final int RECEIVE_SMS_REQUEST = 301;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -43,9 +44,64 @@ public final class SettingsActivity extends Activity {
         confidence = settings.confidence();
 
         root = UiKit.screen(this, "Settings", true);
-        LinearLayout provider = UiKit.card(this, root, 0xFFFFFFFF);
-        TextView heading = UiKit.heading(this, provider, "AI connection");
-        // Easter egg: seven taps still unlock encrypted developer diagnostics.
+        addFilters();
+        if (SetupPermissions.supportsMonitoring()) {
+            replyCard = UiKit.card(this, root, 0xFFFFFFFF);
+            smsPermissionCard = UiKit.card(this, root, 0xFFFFFFFF);
+            if (getIntent().getBooleanExtra(EXTRA_SMS_ACCESS, false) && state == null) {
+                smsPermissionStep.permissionRequested();
+                smsPermissionCard.post(() -> smsPermissionCard.requestRectangleOnScreen(
+                        new Rect(0, 0, smsPermissionCard.getWidth(), smsPermissionCard.getHeight()), true));
+            }
+            addBatterySettings();
+        }
+        addAccount();
+        addPrivacy();
+        LinearLayout about = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.heading(this, about, "About");
+        UiKit.description(this, about, "Version " + BuildConfig.VERSION_NAME
+                + " · Build " + BuildConfig.VERSION_CODE);
+        AppUpdates.addSettingsAction(this, about);
+        addSample();
+    }
+
+    private void addFilters() {
+        LinearLayout filters = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.sectionHelp(this, filters, "Filter categories", () -> UiKit.info(this,
+                "Filter categories",
+                "Voting reminders cover unsolicited get-out-the-vote texts. Political campaigns "
+                        + "include political surveys and issue outreach. Marketing covers promotions "
+                        + "and ads. Selecting at least one category enables analysis."));
+        voteCategory = addCategory(filters, "Voting reminders", MessageCategories.VOTE);
+        politicalCategory = addCategory(filters, "Political campaigns", MessageCategories.POLITICAL);
+        marketingCategory = addCategory(filters, "Marketing", MessageCategories.MARKETING);
+        UiKit.sectionHelp(this, filters, "Minimum match", () -> UiKit.info(this, "Minimum match",
+                "This is how confident Jev must be before TextSentry recommends STOP. "
+                        + "A higher value makes the filter more selective."));
+        TextView confidenceLabel = UiKit.description(this, filters, confidence + "%");
+        SeekBar slider = new SeekBar(this);
+        slider.setMinHeight(UiKit.dp(this, 48));
+        slider.setMax(50);
+        slider.setProgress(confidence - 50);
+        slider.setContentDescription("Minimum match confidence");
+        filters.addView(slider);
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                confidence = 50 + progress;
+                confidenceLabel.setText(confidence + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        UiKit.button(this, filters, "Save filters", true, this::saveFilters);
+        UiKit.link(this, filters, "Manage exceptions", () ->
+                startActivity(new Intent(this, ExceptionsActivity.class)));
+    }
+
+    private void addAccount() {
+        LinearLayout connection = UiKit.card(this, root, 0xFFFFFFFF);
+        TextView heading = UiKit.heading(this, connection, "AI connection");
+        // Seven taps unlock the existing encrypted developer diagnostics.
         heading.setOnClickListener(v -> {
             if (settings.developerMode()) return;
             if (++developerTaps >= 7) {
@@ -59,180 +115,196 @@ public final class SettingsActivity extends Activity {
                         }).setNegativeButton("Cancel", null).show();
             }
         });
-        UiKit.chip(this, provider, AnalysisAccess.status(this));
-        UiKit.button(this, provider, "Manage account", false, () ->
+        connectionStatus = UiKit.description(this, connection, AnalysisAccess.status(this));
+        UiKit.link(this, connection, "Manage account", () ->
                 startActivity(new Intent(this, AccountActivity.class)));
-        boolean managedAccount = new AuthSessionStore(this).hasSession();
-        if (managedAccount) {
-            UiKit.button(this, provider, "Manage subscription", true, this::manageSubscription);
+        if (new AuthSessionStore(this).hasSession()) {
+            UiKit.link(this, connection, "Manage subscription", this::manageSubscription);
+        } else {
+            UiKit.link(this, connection, "Change TypeSafe key", this::changeKey);
+            UiKit.link(this, connection, "Remove TypeSafe key", () ->
+                    new AlertDialog.Builder(this)
+                            .setTitle("Remove your key?")
+                            .setMessage("This pauses monitoring and returns you to setup.")
+                            .setPositiveButton("Remove", (d, w) -> {
+                                if (!new AuthSessionStore(this).hasSession()) settings.pause();
+                                vault.clear();
+                                SetupGate.enforce(this);
+                            }).setNegativeButton("Cancel", null).show());
         }
-        if (!managedAccount) {
-        apiKey = UiKit.input(this, provider, "Your TypeSafe key (optional)", "", false, true);
-        apiKey.setHint("API key");
-        keyState = UiKit.description(this, provider, "");
-        refreshKey();
-        UiKit.button(this, provider, "Remove BYOK key", false, () ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Remove your key?")
-                        .setMessage("Monitoring will pause if you aren't signed in.")
-                        .setPositiveButton("Remove", (d, w) -> {
-                            if (!new AuthSessionStore(this).hasSession()) settings.pause();
-                            vault.clear();
-                            apiKey.setText("");
-                            refreshKey();
-                            if (!SetupGate.hasAccess(this)) SetupGate.enforce(this);
-                        }).setNegativeButton("Cancel", null).show());
-        }
-
-        LinearLayout rules = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, rules, "Filter categories");
-        voteCategory = addCategory(rules, "Voting reminders", "", MessageCategories.VOTE);
-        politicalCategory = addCategory(rules, "Political campaigns", "Campaigns, political surveys and issue outreach.", MessageCategories.POLITICAL);
-        marketingCategory = addCategory(rules, "Marketing", "", MessageCategories.MARKETING);
-        generatedInstructions = UiKit.description(this, rules, "");
-        generatedInstructions.setVisibility(android.view.View.GONE);
-        confidenceLabel = UiKit.description(this, rules, "Minimum match: " + confidence + "%");
-        SeekBar slider = new SeekBar(this);
-        slider.setMax(50);
-        slider.setProgress(confidence - 50);
-        slider.setContentDescription("Minimum match confidence");
-        rules.addView(slider);
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                confidence = 50 + progress;
-                confidenceLabel.setText("Minimum match: " + confidence + "%");
-            }
-            @Override public void onStartTrackingTouch(SeekBar bar) {}
-            @Override public void onStopTrackingTouch(SeekBar bar) {}
-        });
-        UiKit.button(this, rules, "Save settings", true, this::save);
-
-        LinearLayout data = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, data, "Data & privacy");
-        UiKit.button(this, data, "History", false, () ->
-                startActivity(new Intent(this, HistoryActivity.class)));
-        UiKit.button(this, data, "Manage exceptions", false, () ->
-                startActivity(new Intent(this, ExceptionsActivity.class)));
-        UiKit.button(this, data, "Clear history", false, () ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Clear local history?")
-                        .setMessage("Only TextSentry history is deleted, not your SMS inbox.")
-                        .setPositiveButton("Clear", (d, w) -> {
-                            settings.clearHistory();
-                            toast("History cleared");
-                        }).setNegativeButton("Cancel", null).show());
-        UiKit.button(this, data, "Privacy policy", false, () -> startActivity(
-                new Intent(Intent.ACTION_VIEW, Uri.parse("https://textsentry.org/privacy.html"))));
-        UiKit.button(this, data, "Delete app data", false, () ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Erase TextSentry data?")
-                        .setMessage("Removes settings, keys and local history. Does not delete SMS.")
-                        .setPositiveButton("Erase", (d, w) -> {
-                            DataControl.deleteLocalData(this);
-                            finish();
-                        }).setNegativeButton("Cancel", null).show());
-        if (SetupPermissions.supportsMonitoring()) {
-            // Keep Android's restricted-permission and battery guidance accessible
-            // after checkout; neither permission is silently granted during setup.
-            smsPermissionCard = UiKit.card(this, root, 0xFFFFFFFF);
-            renderSmsPermissionCard();
-
-            LinearLayout background = UiKit.card(this, root, 0xFFFFFFFF);
-            UiKit.heading(this, background, "Background operation");
-            UiKit.chip(this, background, SetupPermissions.unrestricted(this)
-                    ? "✓ Battery optimization exemption detected"
-                    : "○ Battery optimization exemption not detected");
-            batteryInstruction(background, "1. Open TextSentry app settings below.");
-            UiKit.button(this, background, "Open TextSentry app settings", false,
-                    () -> SetupPermissions.openBatterySettings(this));
-            batteryInstruction(background, "2. Tap App battery usage (or Battery).");
-            batteryInstruction(background, "3. Choose Unrestricted.");
-            UiKit.description(this, background,
-                    "Recommended for timely monitoring; optional and may use more battery. "
-                            + "This does not grant SMS access.");
-        }
-
-        LinearLayout sampleCard = UiKit.card(this, root, 0xFFFFFFFF);
-        UiKit.heading(this, sampleCard, "Try it");
-        EditText sample = UiKit.input(this, sampleCard, "Sample message",
-                "Sale today! Reply STOP to unsubscribe.", true, false);
-        TextView sampleResult = UiKit.description(this, sampleCard, "");
-        UiKit.button(this, sampleCard, "Analyze sample", true, () -> {
-            String content = sample.getText().toString();
-            if (!MessagePolicy.eligible("+15555550123", content)) {
-                sampleResult.setText("Blocked by safety rules.");
-                return;
-            }
-            String instructions;
-            try {
-                instructions = MessageCategories.compose(selectedMask(), settings.prompt());
-            } catch (IllegalArgumentException invalid) {
-                sampleResult.setText("Check your filter rules.");
-                return;
-            }
-            if (instructions.isEmpty()) {
-                sampleResult.setText("Select a filter category first.");
-                return;
-            }
-            sampleResult.setText("Analyzing…");
-            final String policy = instructions;
-            new Thread(() -> {
-                String answer;
-                try {
-                    SystemOneClient.Evaluation result = AnalysisAccess.evaluate(this,
-                            policy, content, confidence / 100.0,
-                            DeveloperMode.traceSink(this, "sample"));
-                    answer = (result.decision.shouldReply ? "Suggest STOP" : "No reply")
-                            + " · " + Math.round(result.confidence * 100) + "% match";
-                } catch (Exception ignored) {
-                    answer = "Analysis unavailable. Check your connection.";
-                }
-                String finalAnswer = answer;
-                runOnUiThread(() -> sampleResult.setText(finalAnswer));
-            }, "textsentry-sample").start();
-        });
-
     }
 
-    /** Readable battery guidance is available in Settings, not the first-run wizard. */
-    private void batteryInstruction(LinearLayout card, String instruction) {
-        TextView step = UiKit.text(this, instruction, 18, UiKit.INK, false);
-        step.setBackground(UiKit.shape(UiKit.HIGHLIGHT, UiKit.dp(this, 12), 0));
-        step.setPadding(UiKit.dp(this, 14), UiKit.dp(this, 14),
-                UiKit.dp(this, 14), UiKit.dp(this, 14));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = UiKit.dp(this, 12);
-        card.addView(step, params);
+    private void changeKey() {
+        LinearLayout body = UiKit.vertical(this);
+        body.setPaddingRelative(UiKit.dp(this, 24), 0, UiKit.dp(this, 24), UiKit.dp(this, 16));
+        EditText key = UiKit.input(this, body, "TypeSafe API key", "", false, true);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Change TypeSafe key")
+                .setView(UiKit.scrollable(this, body)).setPositiveButton("Continue", null)
+                .setNegativeButton("Cancel", null).show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String entered = key.getText().toString().trim();
+            if (entered.isEmpty()) {
+                key.setError("Enter your TypeSafe key");
+                return;
+            }
+            OwnKeyAgreement.show(this, () -> {
+                try {
+                    vault.save(entered);
+                    settings.invalidateQueuedWork();
+                    connectionStatus.setText(AnalysisAccess.status(this));
+                    dialog.dismiss();
+                    toast("TypeSafe key saved");
+                } catch (Exception error) {
+                    key.setError("Couldn't save this key");
+                }
+            });
+        });
+    }
+
+    private void addPrivacy() {
+        LinearLayout data = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.sectionHelp(this, data, "Data & privacy", () -> UiKit.info(this, "Local history",
+                "TextSentry encrypts its history on your device. Confirmed STOP replies stay until "
+                        + "you clear history. Other decisions expire after 24 hours."));
+        UiKit.link(this, data, "Privacy policy", () -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://textsentry.org/privacy.html")));
+            } catch (ActivityNotFoundException ignored) {
+                toast("No browser is available");
+            }
+        });
+        UiKit.link(this, data, "Clear history", () -> new AlertDialog.Builder(this)
+                .setTitle("Clear local history?")
+                .setMessage("This erases TextSentry's saved message history. Your original messages stay in your inbox.")
+                .setPositiveButton("Clear", (d, w) -> {
+                    settings.clearHistory();
+                    toast("History cleared");
+                }).setNegativeButton("Cancel", null).show());
+        UiKit.link(this, data, "Delete app data", () -> new AlertDialog.Builder(this)
+                .setTitle("Erase TextSentry data?")
+                .setMessage("This removes settings, keys and local history. Your original messages stay in your inbox.")
+                .setPositiveButton("Erase", (d, w) -> {
+                    DataControl.deleteLocalData(this);
+                    SetupGate.enforce(this);
+                }).setNegativeButton("Cancel", null).show());
+    }
+
+    private void addBatterySettings() {
+        LinearLayout battery = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.sectionHelp(this, battery, "Background operation", this::showBatteryHelp)
+                .setId(R.id.battery_help);
+        batteryStatus = UiKit.description(this, battery, "");
+        UiKit.link(this, battery, "Open TextSentry app settings", () ->
+                SetupPermissions.openBatterySettings(this));
+    }
+
+    private void showBatteryHelp() {
+        LinearLayout steps = UiKit.vertical(this);
+        steps.setPaddingRelative(UiKit.dp(this, 24), 0, UiKit.dp(this, 24), UiKit.dp(this, 16));
+        for (String instruction : new String[]{
+                "1. Open TextSentry app settings.",
+                "2. Tap App battery usage (or Battery).",
+                "3. Choose Unrestricted."
+        }) {
+            TextView step = UiKit.description(this, steps, instruction);
+            step.setTextColor(UiKit.INK);
+            step.setTextSize(18);
+        }
+        UiKit.description(this, steps, "This can help monitoring run on time and may use more battery.");
+        new AlertDialog.Builder(this).setTitle("Background operation")
+                .setView(UiKit.scrollable(this, steps))
+                .setPositiveButton("Open app settings", (dialog, which) ->
+                        SetupPermissions.openBatterySettings(this))
+                .setNegativeButton("Done", null).show();
     }
 
     private void renderSmsPermissionCard() {
         if (smsPermissionCard == null || isFinishing()) return;
         smsPermissionCard.removeAllViews();
-        UiKit.heading(this, smsPermissionCard, "SMS access");
+        UiKit.sectionHelp(this, smsPermissionCard, "SMS access", this::showSmsHelp)
+                .setId(R.id.sms_help);
         boolean allowed = SetupPermissions.hasIncoming(this);
-        UiKit.chip(this, smsPermissionCard, allowed
-                ? "✓ Incoming SMS allowed" : "○ Incoming SMS permission needed");
-        UiKit.description(this, smsPermissionCard,
-                "Grant incoming SMS access before starting monitoring on Home. "
-                        + "Replies remain off unless you explicitly enable them.");
-        if (!allowed) {
-            if (smsPermissionStep.showAppSettings(false)) {
-                SmsPermissionGuideUi.show(this, smsPermissionCard);
-                UiKit.button(this, smsPermissionCard, "Open app settings", true, () -> {
-                    smsPermissionStep.settingsOpened();
-                    SetupPermissions.openAppSettings(this);
-                });
-            } else {
-                UiKit.button(this, smsPermissionCard, "Allow incoming SMS", true,
-                        this::requestIncomingSms);
-            }
+        UiKit.description(this, smsPermissionCard, !allowed ? "Incoming SMS access needed"
+                : SetupPermissions.hasInbox(this) ? "Incoming SMS and MMS access allowed"
+                : "Incoming SMS allowed · MMS access needed");
+        if (allowed) {
+            UiKit.link(this, smsPermissionCard, "Open Android permissions", () ->
+                    SetupPermissions.openAppSettings(this));
+        } else if (smsPermissionStep.showAppSettings(false)) {
+            UiKit.button(this, smsPermissionCard, "Open app settings", true, this::openSmsSettings);
+        } else {
+            UiKit.button(this, smsPermissionCard, "Allow incoming SMS", true, this::requestIncomingSms);
         }
+    }
+
+    private void showSmsHelp() {
+        if (SetupPermissions.hasIncoming(this)) {
+            UiKit.info(this, "SMS and MMS access",
+                    "Monitoring reads incoming texts. Reading text from picture or group messages "
+                            + "also requires inbox access, which your Android installer may restrict.");
+        } else {
+            SmsPermissionGuideUi.show(this, this::openSmsSettings);
+        }
+    }
+
+    private void openSmsSettings() {
+        smsPermissionStep.settingsOpened();
+        SetupPermissions.openAppSettings(this);
     }
 
     private void requestIncomingSms() {
         smsPermissionStep.permissionRequested();
         SetupPermissions.requestIncoming(this, RECEIVE_SMS_REQUEST);
         renderSmsPermissionCard();
+    }
+
+    private void renderReplyCard() {
+        if (replyCard == null || isFinishing()) return;
+        replyCard.removeAllViews();
+        UiKit.sectionHelp(this, replyCard, "Automatic STOP replies", () -> UiKit.info(this,
+                "Automatic STOP replies", "TextSentry can send a fixed STOP reply for messages that "
+                        + "meet your rules. You can review suggested replies in History before enabling this. "
+                        + "Pausing monitoring also turns off automatic replies."));
+        if (settings.autoSend()) {
+            boolean allowed = SetupPermissions.hasOutgoing(this);
+            UiKit.description(this, replyCard, allowed ? "On" : "SMS reply access needed");
+            if (!allowed) {
+                UiKit.link(this, replyCard, "Restore reply access", this::confirmAutoSend);
+            }
+            UiKit.button(this, replyCard, "Turn off auto-replies", false, () -> {
+                settings.setAutomation(settings.monitoring(), false);
+                renderReplyCard();
+            });
+        } else if (settings.monitoring() && SetupPermissions.hasIncoming(this)) {
+            UiKit.button(this, replyCard, "Enable auto-replies", false, this::confirmAutoSend);
+        } else {
+            UiKit.description(this, replyCard, "Off · Start monitoring to enable");
+        }
+    }
+
+    private void confirmAutoSend() {
+        if (!settings.monitoring() || !SetupPermissions.hasIncoming(this)) {
+            showSmsHelp();
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Enable automatic replies?")
+                .setMessage("TextSentry can send STOP when a message meets your rules. A wrong decision "
+                        + "may confirm that your number is active. Carrier charges may apply.")
+                .setPositiveButton("Enable", (dialog, which) -> {
+                    if (SetupPermissions.hasOutgoing(this)) {
+                        enableAutoSend();
+                    } else {
+                        SetupPermissions.requestOutgoing(this, SEND_SMS_REQUEST);
+                    }
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void enableAutoSend() {
+        if (settings.monitoring() && SetupPermissions.hasIncoming(this)
+                && SetupPermissions.hasOutgoing(this)) {
+            settings.setAutomation(true, true);
+        }
+        renderReplyCard();
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -247,7 +319,68 @@ public final class SettingsActivity extends Activity {
         if (requestCode == RECEIVE_SMS_REQUEST) {
             smsPermissionStep.permissionRequested();
             renderSmsPermissionCard();
+            renderReplyCard();
+        } else if (requestCode == SEND_SMS_REQUEST) {
+            if (SetupPermissions.hasOutgoing(this)) {
+                enableAutoSend();
+            } else {
+                new AlertDialog.Builder(this).setTitle("SMS reply access needed")
+                        .setMessage("Allow SMS in Android app permissions, then return here to enable replies.")
+                        .setPositiveButton("Open app settings", (d, w) -> SetupPermissions.openAppSettings(this))
+                        .setNegativeButton("Done", null).show();
+            }
         }
+    }
+
+    private void addSample() {
+        LinearLayout sampleCard = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.heading(this, sampleCard, "Try it");
+        UiKit.link(this, sampleCard, "Analyze a sample", () -> {
+            LinearLayout body = UiKit.vertical(this);
+            body.setPaddingRelative(UiKit.dp(this, 24), 0, UiKit.dp(this, 24), UiKit.dp(this, 16));
+            EditText sample = UiKit.input(this, body, "Sample message",
+                    "Sale today! Reply STOP to unsubscribe.", true, false);
+            UiKit.description(this, body, "Analyze sends this sample to your AI provider.");
+            TextView result = UiKit.description(this, body, "");
+            AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Try your filters")
+                    .setView(UiKit.scrollable(this, body)).setPositiveButton("Analyze", null)
+                    .setNegativeButton("Done", null).show();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v ->
+                    analyzeSample(sample.getText().toString(), result));
+        });
+    }
+
+    private void analyzeSample(String content, TextView result) {
+        if (!MessagePolicy.eligible("+15555550123", content)) {
+            result.setText("This text couldn't be analyzed.");
+            return;
+        }
+        final String policy;
+        try {
+            policy = MessageCategories.compose(selectedMask(), settings.prompt());
+        } catch (IllegalArgumentException invalid) {
+            result.setText("Check your filter rules.");
+            return;
+        }
+        if (policy.isEmpty()) {
+            result.setText("Select a filter category first.");
+            return;
+        }
+        result.setText("Analyzing…");
+        final double threshold = confidence / 100.0;
+        new Thread(() -> {
+            String answer;
+            try {
+                SystemOneClient.Evaluation evaluation = AnalysisAccess.evaluate(this,
+                        policy, content, threshold, DeveloperMode.traceSink(this, "sample"));
+                answer = (evaluation.decision.shouldReply ? "Suggest STOP" : "No reply")
+                        + " · " + Math.round(evaluation.confidence * 100) + "% match";
+            } catch (Exception ignored) {
+                answer = "Analysis unavailable. Check your connection.";
+            }
+            String finalAnswer = answer;
+            runOnUiThread(() -> result.setText(finalAnswer));
+        }, "textsentry-sample").start();
     }
 
     private void manageSubscription() {
@@ -315,12 +448,12 @@ public final class SettingsActivity extends Activity {
                 .setPositiveButton("OK", null).show();
     }
 
-    private CheckBox addCategory(LinearLayout parent, String title, String subtitle, int bit) {
+    private CheckBox addCategory(LinearLayout parent, String title, int bit) {
         CheckBox box = new CheckBox(this);
         box.setText(title);
         box.setTextSize(15);
         box.setTextColor(UiKit.INK);
-        box.setPadding(0, UiKit.dp(this, 10), 0, 0);
+        box.setMinHeight(UiKit.dp(this, 48));
         box.setChecked((settings.categoryMask() & bit) != 0);
         parent.addView(box);
         return box;
@@ -334,44 +467,13 @@ public final class SettingsActivity extends Activity {
         return selected;
     }
 
-    private void updatePreview() {
+    private void saveFilters() {
         try {
-            String combined = MessageCategories.compose(selectedMask(), settings.prompt());
-            generatedInstructions.setText(combined.isEmpty()
-                    ? "No categories selected — messages will not be evaluated."
-                    : "Combined AI instructions (one request):\n" + combined);
-        } catch (IllegalArgumentException invalid) {
-            generatedInstructions.setText("Rules are too long. Shorten the extra instructions.");
-        }
-    }
-
-    private void refreshKey() {
-        if (keyState == null) return;
-        keyState.setText(vault.hasKey()
-                ? "✓ Own key saved"
-                : "Optional for signed-in users");
-    }
-
-    private void save() {
-        String entered = apiKey == null ? "" : apiKey.getText().toString().trim();
-        if (!entered.isEmpty()) {
-            OwnKeyAgreement.show(this, () -> saveAccepted(entered));
-            return;
-        }
-        saveAccepted("");
-    }
-
-    private void saveAccepted(String entered) {
-        String policy = settings.prompt(); // Keep the developer prompt on normal saves.
-        try {
-            // If saving the key fails, never enable automation or silently lose settings.
-            if (!entered.isEmpty()) vault.save(entered);
-            settings.saveCategoryPolicy(policy, confidence, selectedMask());
-            if (apiKey != null) apiKey.setText("");
-            toast("Settings saved");
+            settings.saveCategoryPolicy(settings.prompt(), confidence, selectedMask());
+            toast("Filters saved");
             finish();
         } catch (Exception ex) {
-            toast("Couldn't save. Check the key and instructions.");
+            toast("Couldn't save. Check your filter rules.");
         }
     }
 
@@ -384,6 +486,11 @@ public final class SettingsActivity extends Activity {
                 requestIncomingSms();
             }
             renderSmsPermissionCard();
+            renderReplyCard();
+            if (batteryStatus != null) {
+                batteryStatus.setText(SetupPermissions.unrestricted(this)
+                        ? "Battery use unrestricted" : "Using Android's battery limits");
+            }
             refreshDeveloperCard();
         }
     }
@@ -400,7 +507,7 @@ public final class SettingsActivity extends Activity {
         developerCard = UiKit.card(this, root, UiKit.HIGHLIGHT);
         UiKit.heading(this, developerCard, "Developer mode");
 
-        UiKit.button(this, developerCard, "Open developer tools  →", true, () ->
+        UiKit.link(this, developerCard, "Open developer tools", () ->
                 startActivity(new Intent(this, DeveloperActivity.class)));
     }
 
