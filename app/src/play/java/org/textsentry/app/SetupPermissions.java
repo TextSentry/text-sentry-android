@@ -9,6 +9,7 @@ final class SetupPermissions {
     static boolean unrestricted(Activity activity) { return true; }
     static void openBatterySettings(Activity activity) { /* no background worker */ }
     static boolean hasIncoming(Activity activity) { return false; }
+    static boolean hasInbox(Activity activity) { return false; }
     static boolean hasOutgoing(Activity activity) { return false; }
     static void requestIncoming(Activity activity, int requestCode) { }
     static void requestOutgoing(Activity activity, int requestCode) { }

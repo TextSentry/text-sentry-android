@@ -18,6 +18,10 @@ final class SetupPermissions {
         return activity.checkSelfPermission(Manifest.permission.RECEIVE_SMS)
                 == PackageManager.PERMISSION_GRANTED;
     }
+    static boolean hasInbox(Activity activity) {
+        return activity.checkSelfPermission(Manifest.permission.READ_SMS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
     static boolean hasOutgoing(Activity activity) {
         return activity.checkSelfPermission(Manifest.permission.SEND_SMS)
                 == PackageManager.PERMISSION_GRANTED;

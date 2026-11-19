@@ -9,5 +9,6 @@
     <color name="textsentry_purple">#6551F9</color>
     <color name="textsentry_paper">#F3F7FF</color>
     <color name="textsentry_line">#DEE7F7</color>
+    <color name="textsentry_control">#006978</color>
     <color name="textsentry_highlight">#E7F0FF</color>
 </resources>

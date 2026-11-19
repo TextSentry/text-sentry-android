@@ -74,8 +74,8 @@ public final class Settings {
 
     public String generation() { return prefs.getString("generation", "initial-disabled"); }
 
-    /** Exception updates invalidate queued classification jobs without changing monitoring consent. */
-    public void onExceptionsChanged() {
+    /** Invalidate queued classification without changing monitoring consent. */
+    void invalidateQueuedWork() {
         if (!prefs.edit().putString("generation", UUID.randomUUID().toString()).commit()) {
             throw new IllegalStateException("Could not invalidate queued work");
         }

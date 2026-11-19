@@ -82,7 +82,7 @@ public final class ExceptionStore {
             throw new IllegalStateException("Could not save exceptions");
         }
         // Drop work queued under the previous exception policy before a future send.
-        new Settings(context).onExceptionsChanged();
+        new Settings(context).invalidateQueuedWork();
     }
 
     private static String normalized(String type, String value) {
