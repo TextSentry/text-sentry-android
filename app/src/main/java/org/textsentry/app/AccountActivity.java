@@ -123,7 +123,7 @@ public final class AccountActivity extends Activity {
                         label.setText(verified == null
                                 ? "Subscription status unavailable"
                                 : verified.label(sandbox));
-                        if (verified == null || "unavailable".equals(verified.subscription)) {
+                        if (verified == null || ("unavailable".equals(verified.subscription) && !verified.managedKeyEligible())) {
                             // A failed verification is not a reason to purchase again.
                             offerSubscriptionRetry();
                             return;
@@ -136,9 +136,8 @@ public final class AccountActivity extends Activity {
                         }
                         boolean paid = verified != null
                                 && verified.subscriptionValidForBuild(sandbox);
-                        boolean keyEligible = verified != null && verified.managedAccess
-                                && verified.subscriptionValidForBuild(false);
-                        if (subscribeButton != null && BuildConfig.WEB_CHECKOUT_ENABLED) {
+                        boolean keyEligible = verified != null && verified.managedKeyEligible();
+                        if (subscribeButton != null && (BuildConfig.WEB_CHECKOUT_ENABLED || keyEligible)) {
                             if (keyEligible) {
                                 subscribeButton.setEnabled(true);
                                 subscribeButton.setText(continueSetup
