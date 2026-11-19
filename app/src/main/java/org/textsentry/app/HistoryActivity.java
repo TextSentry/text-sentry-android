@@ -3,6 +3,7 @@ package org.textsentry.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -35,6 +36,17 @@ public final class HistoryActivity extends Activity {
             repliesOnly = state.getBoolean("replies_only");
             visibleLimit = state.getInt("visible_limit", 50);
         }
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (!SetupGate.enforce(this)) return;
+        roundupStart = intent.getLongExtra(RoundupWorker.EXTRA_START, 0);
+        roundupEnd = intent.getLongExtra(RoundupWorker.EXTRA_END, 0);
+        repliesOnly = false;
+        visibleLimit = 50;
+        render();
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -72,12 +84,13 @@ public final class HistoryActivity extends Activity {
             return;
         }
         if (roundupView()) {
-            UiKit.heading(this, root, roundupCount + (roundupCount == 1 ? " STOP reply sent" : " STOP replies sent"));
-            UiKit.description(this, root, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+            LinearLayout summary = UiKit.card(this, root, Color.WHITE);
+            UiKit.heading(this, summary, roundupCount + (roundupCount == 1 ? " STOP reply sent" : " STOP replies sent"));
+            UiKit.description(this, summary, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                     .format(new Date(roundupStart)) + " – "
                     + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                     .format(new Date(roundupEnd)));
-            UiKit.button(this, root, "View full history", false, () -> {
+            UiKit.link(this, summary, "View full history", () -> {
                 roundupStart = roundupEnd = 0;
                 repliesOnly = false;
                 visibleLimit = 50;

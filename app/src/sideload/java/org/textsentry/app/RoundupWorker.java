@@ -1,7 +1,6 @@
 package org.textsentry.app;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -77,13 +76,14 @@ public final class RoundupWorker extends Worker {
         }
     }
 
-    @SuppressLint("MissingPermission") // Explicit runtime and channel checks before posting.
     @NonNull @Override public Result doWork() {
-        Context context = getApplicationContext();
+        return runCheck(getApplicationContext(), System.currentTimeMillis());
+    }
+
+    static Result runCheck(Context context, long now) {
         synchronized (LOCK) {
             int days = frequency(context);
             if (days == 0 || !SetupGate.canEnterApp(context)) return Result.success();
-            long now = System.currentTimeMillis();
             long start = prefs(context).getLong("roundup_cursor", now);
             if (!RoundupPolicy.due(days, start, now) || !notificationsAllowed(context))
                 return Result.success();
@@ -108,6 +108,9 @@ public final class RoundupWorker extends Worker {
                             .setContentIntent(pending).setAutoCancel(true).setOnlyAlertOnce(true)
                             .build();
                     if (!notificationsAllowed(context)) return Result.success();
+                    if (Build.VERSION.SDK_INT >= 33 &&
+                            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                    != PackageManager.PERMISSION_GRANTED) return Result.success();
                     manager.notify(NOTIFICATION_ID, notification);
                 }
                 if (!prefs(context).edit().putLong("roundup_cursor", now).commit())

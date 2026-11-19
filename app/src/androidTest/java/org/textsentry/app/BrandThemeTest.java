@@ -73,10 +73,10 @@ public class BrandThemeTest {
             });
             try {
                 assertEquals(UiKit.NIGHT, bars.getColor(0, Color.TRANSPARENT));
-                assertEquals(UiKit.BG, bars.getColor(1, Color.TRANSPARENT));
+                assertEquals(UiKit.NIGHT, bars.getColor(1, Color.TRANSPARENT));
                 assertFalse(bars.getBoolean(2, true)); // white icons on navy
                 if (Build.VERSION.SDK_INT >= 27) {
-                    assertTrue(bars.getBoolean(3, false)); // dark icons on pale navigation
+                    assertFalse(bars.getBoolean(3, false)); // light icons on the dark Home surface
                 }
             } finally {
                 bars.recycle();
@@ -91,14 +91,15 @@ public class BrandThemeTest {
             if (Build.VERSION.SDK_INT >= 30) {
                 WindowInsets insets = screen.getRootWindowInsets();
                 assertNotNull(insets);
-                assertEquals(insets.getInsets(WindowInsets.Type.statusBars()).top,
+                assertEquals(insets.getInsets(WindowInsets.Type.systemBars()
+                                | WindowInsets.Type.displayCutout()).top,
                         topScrim.getLayoutParams().height);
                 WindowInsetsController controller = activity.getWindow().getInsetsController();
                 assertNotNull(controller);
                 assertEquals(0, controller.getSystemBarsAppearance()
                         & WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                assertTrue((controller.getSystemBarsAppearance()
-                        & WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS) != 0);
+                assertEquals(0, controller.getSystemBarsAppearance()
+                        & WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(activity::finish);

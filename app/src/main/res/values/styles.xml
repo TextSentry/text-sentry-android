@@ -11,6 +11,9 @@
         <item name="android:textColorPrimary">@color/textsentry_ink</item>
     </style>
     <style name="Theme.TextSentry" parent="Theme.TextSentry.Base" />
+    <style name="Theme.TextSentry.Home" parent="Theme.TextSentry.Base">
+        <item name="android:navigationBarColor">@color/textsentry_night</item>
+    </style>
     <style name="Theme.TextSentry.Launch" parent="Theme.TextSentry">
         <item name="android:windowBackground">@drawable/launch_background</item>
     </style>

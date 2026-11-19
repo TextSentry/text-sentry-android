@@ -193,7 +193,7 @@ public class SmsPermissionWizardTest {
             assertNotNull(root.findViewById(R.id.open_history));
             assertNotNull(root.findViewById(R.id.open_settings));
             assertFalse(contains(root, "Check for updates"));
-            assertFalse(contains(root, "Automatic STOP replies"));
+            assertFalse(root.findViewById(R.id.stop_replies).isEnabled());
             assertFalse(contains(root, "Automatic picture-message filtering"));
             assertFalse(contains(root, "Enable automatic MMS filtering"));
             assertFalse(contains(root, "Turn off MMS filtering"));
