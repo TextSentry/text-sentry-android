@@ -3,6 +3,7 @@ package org.textsentry.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -20,18 +21,37 @@ import java.util.List;
 /** Private, full message history with model probability and true send status. */
 public final class HistoryActivity extends Activity {
     private boolean repliesOnly;
+    private long roundupStart, roundupEnd;
+    private boolean roundupView() { return roundupStart > 0 && roundupEnd > roundupStart; }
     private int visibleLimit = 50;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         if (!SetupGate.enforce(this)) return;
+        roundupStart = getIntent().getLongExtra(RoundupWorker.EXTRA_START, 0);
+        roundupEnd = getIntent().getLongExtra(RoundupWorker.EXTRA_END, 0);
         if (state != null) {
+            roundupStart = state.getLong("roundup_start");
+            roundupEnd = state.getLong("roundup_end");
             repliesOnly = state.getBoolean("replies_only");
             visibleLimit = state.getInt("visible_limit", 50);
         }
     }
 
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (!SetupGate.enforce(this)) return;
+        roundupStart = intent.getLongExtra(RoundupWorker.EXTRA_START, 0);
+        roundupEnd = intent.getLongExtra(RoundupWorker.EXTRA_END, 0);
+        repliesOnly = false;
+        visibleLimit = 50;
+        render();
+    }
+
     @Override protected void onSaveInstanceState(Bundle out) {
+        out.putLong("roundup_start", roundupStart);
+        out.putLong("roundup_end", roundupEnd);
         out.putBoolean("replies_only", repliesOnly);
         out.putInt("visible_limit", visibleLimit);
         super.onSaveInstanceState(out);
@@ -44,20 +64,39 @@ public final class HistoryActivity extends Activity {
     }
 
     private void render() {
-        LinearLayout root = UiKit.screen(this, "History", true);
+        LinearLayout root = UiKit.screen(this, roundupView() ? "STOP roundup" : "History", true);
         List<HistoryStore.Entry> entries;
         HistoryStore.Summary counts;
+        int roundupCount = 0;
         try {
             HistoryStore store = new HistoryStore(this);
             counts = store.summary();
-            entries = store.list(visibleLimit, 0, repliesOnly);
+            if (roundupView()) {
+                roundupCount = store.roundupCount(roundupStart, roundupEnd);
+                entries = store.roundupEntries(roundupStart, roundupEnd, visibleLimit);
+            } else {
+                entries = store.list(visibleLimit, 0, repliesOnly);
+            }
         } catch (Exception error) {
             LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
             UiKit.heading(this, card, "History unavailable");
             UiKit.description(this, card, "Could not unlock local message history. No entries were deleted.");
             return;
         }
-        if (counts.total > 0 || repliesOnly) {
+        if (roundupView()) {
+            LinearLayout summary = UiKit.card(this, root, Color.WHITE);
+            UiKit.heading(this, summary, roundupCount + (roundupCount == 1 ? " STOP reply sent" : " STOP replies sent"));
+            UiKit.description(this, summary, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    .format(new Date(roundupStart)) + " – "
+                    + DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    .format(new Date(roundupEnd)));
+            UiKit.link(this, summary, "View full history", () -> {
+                roundupStart = roundupEnd = 0;
+                repliesOnly = false;
+                visibleLimit = 50;
+                render();
+            });
+        } else if (counts.total > 0 || repliesOnly) {
             UiKit.button(this, root, repliesOnly ? "Show all decisions" : "Show replies only",
                     false, () -> { repliesOnly = !repliesOnly; visibleLimit = 50; render(); });
             UiKit.description(this, root, repliesOnly
@@ -66,7 +105,7 @@ public final class HistoryActivity extends Activity {
         }
         for (HistoryStore.Entry entry : entries) addEntry(root, entry);
 
-        int totalVisible = repliesOnly ? counts.replied : counts.total;
+        int totalVisible = roundupView() ? roundupCount : repliesOnly ? counts.replied : counts.total;
         if (entries.size() < totalVisible) {
             UiKit.button(this, root, "Load older messages", false, () -> {
                 visibleLimit += 50;
@@ -75,8 +114,8 @@ public final class HistoryActivity extends Activity {
         }
         if (entries.isEmpty()) {
             LinearLayout empty = UiKit.card(this, root, Color.WHITE);
-            UiKit.heading(this, empty, repliesOnly ? "No replies yet" : "No messages reviewed yet");
-            UiKit.description(this, empty, repliesOnly
+            UiKit.heading(this, empty, roundupView() ? "No replies in this roundup" : repliesOnly ? "No replies yet" : "No messages reviewed yet");
+            UiKit.description(this, empty, roundupView() ? "These history entries may have been cleared." : repliesOnly
                     ? "Show all decisions to see previews and messages that received no reply."
                     : "Reviewed messages will appear here.");
         }

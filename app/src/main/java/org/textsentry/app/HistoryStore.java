@@ -46,7 +46,7 @@ public final class HistoryStore {
 
     private static final class HistoryDatabase extends SQLiteOpenHelper {
         HistoryDatabase(Context context) {
-            super(context, DB_NAME, null, 1);
+            super(context, DB_NAME, null, 2);
         }
 
         @Override public void onCreate(SQLiteDatabase db) {
@@ -54,12 +54,20 @@ public final class HistoryStore {
                     + "id TEXT PRIMARY KEY NOT NULL, "
                     + "timestamp INTEGER NOT NULL, "
                     + "status TEXT NOT NULL, "
+                    + "sent_at INTEGER NOT NULL DEFAULT 0, "
                     + "payload BLOB NOT NULL)");
             db.execSQL("CREATE INDEX history_time ON messages(timestamp DESC)");
             db.execSQL("CREATE INDEX history_expire ON messages(status, timestamp)");
+            db.execSQL("CREATE INDEX history_roundup ON messages(status, sent_at)");
         }
 
         @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+            if (oldVersion == 1 && newVersion == 2) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN sent_at INTEGER NOT NULL DEFAULT 0");
+                db.execSQL("UPDATE messages SET sent_at=timestamp WHERE status='sent'");
+                db.execSQL("CREATE INDEX history_roundup ON messages(status, sent_at)");
+                return;
+            }
             throw new IllegalStateException("Unsupported history database schema");
         }
     }
@@ -196,6 +204,7 @@ public final class HistoryStore {
         values.put("id", id);
         values.put("timestamp", item.getLong("timestamp"));
         values.put("status", item.getString("status"));
+        if ("sent".equals(item.getString("status"))) values.put("sent_at", item.getLong("timestamp"));
         values.put("payload", seal(item));
         if (db.insertWithOnConflict(TABLE, null, values, conflictPolicy) == -1L) {
             // CONFLICT_IGNORE returns -1 when migration replays an already committed ID.
@@ -299,6 +308,7 @@ public final class HistoryStore {
                     value.put("status", sent ? "sent" : "send_failed");
                     ContentValues updated = new ContentValues();
                     updated.put("status", sent ? "sent" : "send_failed");
+                    if (sent) updated.put("sent_at", clock.getAsLong());
                     updated.put("payload", seal(value));
                     if (db.update(TABLE, updated, "id=? AND status=?",
                             new String[]{id, "submitting"}) != 1) {
@@ -323,6 +333,35 @@ public final class HistoryStore {
                     repliedOnly ? new String[]{"sent", "submitting"} : null,
                     null, null, "timestamp DESC, rowid DESC",
                     offset + "," + limit)) {
+                while (cursor.moveToNext()) result.add(new Entry(unseal(cursor.getBlob(0))));
+            }
+            return result;
+        }
+    }
+
+    /** Roundup uses confirmation time, not the time the classification was recorded. */
+    private static final String ROUNDUP = "status='sent' AND sent_at>? AND sent_at<=?";
+    private static String[] roundupArgs(long start, long end) {
+        return new String[]{Long.toString(start), Long.toString(end)};
+    }
+
+    public int roundupCount(long start, long end) throws Exception {
+        synchronized (LOCK) {
+            try (Cursor cursor = ready().rawQuery("SELECT COUNT(*) FROM messages WHERE " + ROUNDUP,
+                    roundupArgs(start, end))) {
+                cursor.moveToFirst();
+                return cursor.getInt(0);
+            }
+        }
+    }
+
+    public List<Entry> roundupEntries(long start, long end, int limit) throws Exception {
+        if (limit < 1) throw new IllegalArgumentException("Invalid history page");
+        synchronized (LOCK) {
+            List<Entry> result = new ArrayList<>();
+            try (Cursor cursor = ready().query(TABLE, new String[]{"payload"}, ROUNDUP,
+                    roundupArgs(start, end), null, null, "sent_at DESC, rowid DESC",
+                    Integer.toString(limit))) {
                 while (cursor.moveToNext()) result.add(new Entry(unseal(cursor.getBlob(0))));
             }
             return result;

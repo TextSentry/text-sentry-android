@@ -48,3 +48,5 @@ Users may explicitly protect a sender number or a suggested/editable keyword fro
 ### Encrypted history retention and email compatibility
 
 Both flavors now store message history in a device-only SQLite database with per-record AES-256-GCM content encryption. Confirmed Android sent replies are retained indefinitely until users clear data; all other history expires after 24 hours and is pruned on read/write plus best-effort WorkManager maintenance. Existing encrypted 100-record history migrates without network calls. History is paged to avoid loading an unbounded collection into the UI. The Play flavor still cannot send/confirm SMS, so all Play manual analyses expire after 24 hours; no restricted permissions are introduced. User-initiated support drafts now supply message text via both email intent extras and an encoded mailto body.
+
+The optional STOP roundup notification, including the Android `POST_NOTIFICATIONS` manifest permission, is sideload-only. Play manual suggestions are never counted as confirmed automatic STOP sends.

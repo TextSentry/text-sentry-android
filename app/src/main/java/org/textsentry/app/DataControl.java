@@ -10,6 +10,7 @@ public final class DataControl {
     public static void deleteLocalData(Context context) {
         // Block queued sends before attempting async WorkManager cancellation.
         new Settings(context).pause();
+        RoundupWorker.setFrequency(context, 0);
         WorkManager.getInstance(context).cancelAllWork();
         new KeyVault(context).clear();
         // Account refresh/access/ID tokens are stored in a separate Keystore-backed vault.

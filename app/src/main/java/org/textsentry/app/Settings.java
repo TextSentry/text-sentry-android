@@ -154,6 +154,7 @@ public final class Settings {
     /** Deletes TextSentry's local decision log only; never modifies the SMS inbox. */
     public void clearHistory() {
         new HistoryStore(appContext).clear();
+        RoundupWorker.cancelNotification(appContext);
         prefs.edit().remove("history").commit();
     }
 }
