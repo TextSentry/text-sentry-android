@@ -101,7 +101,7 @@ public final class RoundupWorker extends Worker {
                     PendingIntent pending = PendingIntent.getActivity(context, NOTIFICATION_ID, intent,
                             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                     Notification notification = new Notification.Builder(context, CHANNEL)
-                            .setSmallIcon(R.drawable.ic_textsentry_foreground)
+                            .setSmallIcon(R.drawable.ic_roundup_notification)
                             .setContentTitle("TextSentry roundup")
                             .setContentText("Your STOP replies are ready to review.")
                             .setVisibility(Notification.VISIBILITY_PRIVATE)
