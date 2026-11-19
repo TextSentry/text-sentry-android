@@ -21,6 +21,7 @@ public final class SettingsActivity extends Activity {
     static final String EXTRA_SMS_ACCESS = "focus_sms_access";
     private static final int RECEIVE_SMS_REQUEST = 301;
     private static final int SEND_SMS_REQUEST = 302;
+    private static final int ROUNDUP_PERMISSION_REQUEST = 303;
 
     private Settings settings;
     private KeyVault vault;
@@ -28,7 +29,7 @@ public final class SettingsActivity extends Activity {
     private int confidence;
     private int developerTaps;
     private LinearLayout root, developerCard, smsPermissionCard, replyCard;
-    private TextView connectionStatus, batteryStatus;
+    private TextView connectionStatus, batteryStatus, roundupStatus;
     private SmsPermissionStep smsPermissionStep = new SmsPermissionStep();
 
     @Override public void onCreate(Bundle state) {
@@ -53,6 +54,7 @@ public final class SettingsActivity extends Activity {
                 smsPermissionCard.post(() -> smsPermissionCard.requestRectangleOnScreen(
                         new Rect(0, 0, smsPermissionCard.getWidth(), smsPermissionCard.getHeight()), true));
             }
+            addRoundupSettings();
             addBatterySettings();
         }
         addAccount();
@@ -315,7 +317,9 @@ public final class SettingsActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
                                                      int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == RECEIVE_SMS_REQUEST) {
+        if (requestCode == ROUNDUP_PERMISSION_REQUEST) {
+            refreshRoundup();
+        } else if (requestCode == RECEIVE_SMS_REQUEST) {
             smsPermissionStep.permissionRequested();
             renderSmsPermissionCard();
             renderReplyCard();
@@ -329,6 +333,59 @@ public final class SettingsActivity extends Activity {
                         .setNegativeButton("Done", null).show();
             }
         }
+    }
+
+    private void addRoundupSettings() {
+        LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
+        UiKit.sectionHelp(this, card, "STOP roundup", () -> UiKit.info(this, "STOP roundup",
+                "A quiet reminder to review confirmed STOP replies. No reminder is sent when there are no new replies. Android may delay background delivery."));
+        roundupStatus = UiKit.description(this, card, "");
+        UiKit.link(this, card, "Change frequency", this::chooseRoundup);
+        refreshRoundup();
+    }
+
+    private void refreshRoundup() {
+        if (roundupStatus == null) return;
+        int days = RoundupWorker.frequency(this);
+        String label = days == 1 ? "Every day" : days == 2 ? "Every other day"
+                : days == 7 ? "Once a week" : "Off";
+        if (days != 0 && !RoundupWorker.notificationsAllowed(this))
+            label += " · Android notifications disabled";
+        roundupStatus.setText(label);
+    }
+
+    private void chooseRoundup() {
+        int[] days = {0, 1, 2, 7};
+        int current = RoundupWorker.frequency(this);
+        int selected = current == 1 ? 1 : current == 2 ? 2 : current == 7 ? 3 : 0;
+        new AlertDialog.Builder(this).setTitle("STOP roundup")
+                .setSingleChoiceItems(new String[]{"Off", "Every day", "Every other day", "Once a week"},
+                        selected, (dialog, which) -> {
+                    dialog.dismiss();
+                    try {
+                        RoundupWorker.setFrequency(this, days[which]);
+                        refreshRoundup();
+                        if (days[which] != 0 && !RoundupWorker.notificationsAllowed(this)) {
+                            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                                            != android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    && !getPreferences(MODE_PRIVATE).getBoolean("roundup_permission_requested", false)) {
+                                getPreferences(MODE_PRIVATE).edit().putBoolean("roundup_permission_requested", true).apply();
+                                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                        ROUNDUP_PERMISSION_REQUEST);
+                            } else {
+                                new AlertDialog.Builder(this).setTitle("Allow roundup notifications")
+                                        .setMessage("Enable TextSentry notifications in Android settings to receive roundups.")
+                                        .setPositiveButton("Open settings", (d, w) -> startActivity(
+                                                new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName())))
+                                        .setNegativeButton("Not now", null).show();
+                            }
+                        }
+                    } catch (RuntimeException failure) {
+                        Toast.makeText(this, "Could not update roundup", Toast.LENGTH_LONG).show();
+                    }
+                }).setNegativeButton("Cancel", null).show();
     }
 
     private void addSample() {
@@ -490,6 +547,7 @@ public final class SettingsActivity extends Activity {
                 batteryStatus.setText(SetupPermissions.unrestricted(this)
                         ? "Battery use unrestricted" : "Using Android's battery limits");
             }
+            refreshRoundup();
             refreshDeveloperCard();
         }
     }
