@@ -80,11 +80,10 @@ public final class SettingsActivity extends Activity {
                         + "A higher value makes the filter more selective."));
         TextView confidenceLabel = UiKit.description(this, filters, confidence + "%");
         SeekBar slider = new SeekBar(this);
-        slider.setMinHeight(UiKit.dp(this, 48));
         slider.setMax(50);
         slider.setProgress(confidence - 50);
         slider.setContentDescription("Minimum match confidence");
-        filters.addView(slider);
+        filters.addView(slider, new LinearLayout.LayoutParams(-1, UiKit.dp(this, 48)));
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 confidence = 50 + progress;
