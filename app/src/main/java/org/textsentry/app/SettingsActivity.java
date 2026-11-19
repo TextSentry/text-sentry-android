@@ -369,8 +369,8 @@ public final class SettingsActivity extends Activity {
                             if (android.os.Build.VERSION.SDK_INT >= 33 &&
                                     checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                                             != android.content.pm.PackageManager.PERMISSION_GRANTED
-                                    && !getPreferences(MODE_PRIVATE).getBoolean("roundup_permission_requested", false)) {
-                                getPreferences(MODE_PRIVATE).edit().putBoolean("roundup_permission_requested", true).apply();
+                                    && !getSharedPreferences("textsentry_settings", MODE_PRIVATE).getBoolean("roundup_permission_requested", false)) {
+                                getSharedPreferences("textsentry_settings", MODE_PRIVATE).edit().putBoolean("roundup_permission_requested", true).apply();
                                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
                                         ROUNDUP_PERMISSION_REQUEST);
                             } else {
