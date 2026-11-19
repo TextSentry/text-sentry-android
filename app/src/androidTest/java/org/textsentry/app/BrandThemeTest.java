@@ -91,7 +91,8 @@ public class BrandThemeTest {
             if (Build.VERSION.SDK_INT >= 30) {
                 WindowInsets insets = screen.getRootWindowInsets();
                 assertNotNull(insets);
-                assertEquals(insets.getInsets(WindowInsets.Type.statusBars()).top,
+                assertEquals(insets.getInsets(WindowInsets.Type.systemBars()
+                                | WindowInsets.Type.displayCutout()).top,
                         topScrim.getLayoutParams().height);
                 WindowInsetsController controller = activity.getWindow().getInsetsController();
                 assertNotNull(controller);
