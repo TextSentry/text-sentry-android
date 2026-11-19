@@ -48,7 +48,12 @@ public final class MessageCategories {
             result.append("- candidate or political party campaigns, partisan issue advocacy ")
                     .append("and persuasion: praise, blame or criticism of candidates, parties ")
                     .append("or their policies, including indirect attacks and rhetorical ")
-                    .append("questions. No request for votes, money or volunteers is required.\n");
+                    .append("questions; political surveys and opinion polling, issue-based advocacy, ")
+                    .append("and nonpartisan political outreach about government, public policy or ")
+                    .append("international relations, including scripted outreach framed as casual conversation. ")
+                    .append("A generic introduction asking for views plus an opt-out footer (e.g. Stop2End) ")
+                    .append("is strong evidence of organized outreach, not a personal message. ")
+                    .append("No named candidate, party, election, or request for votes, money or volunteers is required.\n");
         }
         if ((mask & MARKETING) != 0) {
             result.append("- marketing advertisements promoting purchases, sales, coupons ")

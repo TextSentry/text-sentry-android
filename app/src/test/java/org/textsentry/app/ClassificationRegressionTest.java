@@ -13,6 +13,14 @@ public class ClassificationRegressionTest {
                 MessageCategories.POLITICAL);
     }
 
+    @Test public void politicalSurveyUsesOneDecisionAndQualifiesForStop() throws Exception {
+        for (String sms : new String[] {ClassificationFixtures.POLITICAL_SURVEY,
+                ClassificationFixtures.POLITICAL_SURVEY_NO_OPT_OUT}) {
+            assertOneRequestForReportedSms(sms, MessageCategories.POLITICAL);
+            assertOneRequestForReportedSms(sms, MessageCategories.ALL);
+        }
+    }
+
     @Test public void reportedTurnoutReminderIsSubmittedUnchangedWithItsCategory() throws Exception {
         assertOneRequestForReportedSms(ClassificationFixtures.GET_OUT_THE_VOTE,
                 MessageCategories.VOTE);

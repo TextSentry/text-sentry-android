@@ -50,7 +50,7 @@ The update check reads only the public GitHub release metadata and compares its 
 The Settings page provides three independent checkboxes:
 
 - **Go vote reminders** — unsolicited nonpartisan get-out-the-vote reminders.
-- **Political campaign messages** — unsolicited candidate, political party, fundraising and campaign appeals.
+- **Political campaign messages** — unsolicited candidate or party campaigns, political fundraising, issue advocacy and political outreach, including nonpartisan surveys and opinion polling framed as casual conversations. Genuine personal political discussions remain excluded.
 - **Marketing ads** — unsolicited commercial promotions, coupons and advertisements.
 
 All three categories are checked by default for new installations and for users who have not saved a selection. Explicitly saved choices, including unchecked categories, remain unchanged. Selected categories are combined using an **OR** into ONE Jev yes/no classification request per eligible, nonduplicate SMS, with the optional extra restrictions appended to that same instruction. There are no separate requests for each checked category. With none selected, analysis is skipped entirely.
