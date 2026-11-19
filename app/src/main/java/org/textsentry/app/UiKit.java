@@ -102,7 +102,7 @@ public final class UiKit {
             toolbar.addView(icon, logo);
         }
         TextView heading = text(a, title.isEmpty() ? "TextSentry" : title, 21, Color.WHITE, true);
-        heading.setAccessibilityHeading(true);
+        markHeading(heading);
         toolbar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
         if (home) {
             iconButton(a, toolbar, R.drawable.ic_history, "History", Color.WHITE,
@@ -195,7 +195,7 @@ public final class UiKit {
         LinearLayout header = row(a);
         parent.addView(header);
         TextView label = text(a, title, 18, INK, true);
-        label.setAccessibilityHeading(true);
+        markHeading(label);
         header.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
         return iconButton(a, header, R.drawable.ic_info, "About " + title, MUTED, help);
     }
@@ -205,10 +205,14 @@ public final class UiKit {
                 .setPositiveButton("Done", null).show();
     }
 
+    private static void markHeading(TextView view) {
+        if (Build.VERSION.SDK_INT >= 28) view.setAccessibilityHeading(true);
+    }
+
     static TextView title(Activity a, LinearLayout parent, String title) {
         TextView heading = text(a, title, 30, INK, true);
         heading.setLetterSpacing(-0.025f);
-        heading.setAccessibilityHeading(true);
+        markHeading(heading);
         parent.addView(heading);
         return heading;
     }
@@ -255,7 +259,7 @@ public final class UiKit {
 
     public static TextView heading(Activity a, LinearLayout parent, String title) {
         TextView t = text(a, title, 19, INK, true);
-        t.setAccessibilityHeading(true);
+        markHeading(t);
         parent.addView(t);
         return t;
     }
