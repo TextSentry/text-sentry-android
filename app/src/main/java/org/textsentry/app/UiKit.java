@@ -10,6 +10,9 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.text.InputType;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
@@ -102,6 +105,12 @@ public final class UiKit {
             toolbar.addView(icon, logo);
         }
         TextView heading = text(a, title.isEmpty() ? "TextSentry" : title, 21, Color.WHITE, true);
+        heading.setLetterSpacing(-0.025f);
+        if (title.isEmpty()) {
+            SpannableString brand = new SpannableString("TextSentry");
+            brand.setSpan(new ForegroundColorSpan(ACCENT), 4, brand.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            heading.setText(brand);
+        }
         markHeading(heading);
         toolbar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1f));
         if (home) {
@@ -158,6 +167,33 @@ public final class UiKit {
         return content;
     }
 
+    static LinearLayout brandPanel(Activity a, LinearLayout parent, String title, String description) {
+        LinearLayout panel = card(a, parent, NIGHT);
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF123149, NIGHT, 0xFF27234B});
+        background.setCornerRadius(dp(a, 24));
+        panel.setBackground(background);
+
+        FrameLayout illustration = new FrameLayout(a);
+        illustration.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        panel.addView(illustration, new LinearLayout.LayoutParams(-1, dp(a, 96)));
+        ImageView paths = new ImageView(a);
+        paths.setImageResource(R.drawable.brand_signal);
+        paths.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        illustration.addView(paths, new FrameLayout.LayoutParams(-1, -1));
+        ImageView mark = new ImageView(a);
+        mark.setImageResource(R.drawable.ic_textsentry_foreground);
+        illustration.addView(mark, new FrameLayout.LayoutParams(dp(a, 92), dp(a, 92), Gravity.CENTER));
+
+        TextView headline = title(a, panel, title);
+        headline.setPadding(0, dp(a, 12), 0, 0);
+        headline.setTextColor(Color.WHITE);
+        TextView detail = description(a, panel, description);
+        detail.setTextColor(0xFFCDDCED);
+        detail.setTextSize(15);
+        return panel;
+    }
+
     static ScrollView scrollable(Activity a, View content) {
         ScrollView scroll = new ScrollView(a);
         scroll.addView(content);
@@ -211,7 +247,8 @@ public final class UiKit {
 
     static TextView title(Activity a, LinearLayout parent, String title) {
         TextView heading = text(a, title, 30, INK, true);
-        heading.setLetterSpacing(-0.025f);
+        heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        heading.setLetterSpacing(-0.035f);
         markHeading(heading);
         parent.addView(heading);
         return heading;
@@ -243,13 +280,17 @@ public final class UiKit {
         t.setTextSize(size);
         t.setTextColor(color);
         t.setLineSpacing(dp(a, 2), 1.08f);
-        if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        if (bold) {
+            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setLetterSpacing(-0.015f);
+        }
         return t;
     }
 
     public static LinearLayout card(Activity a, LinearLayout parent, int background) {
         LinearLayout item = vertical(a);
         item.setPadding(dp(a, 20), dp(a, 21), dp(a, 20), dp(a, 21));
+        item.setElevation(dp(a, 2));
         item.setBackground(shape(background, dp(a, 19), background == Color.WHITE ? 0xFFDEE7F7 : 0));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = dp(a, 15);
@@ -306,7 +347,14 @@ public final class UiKit {
         b.setTextColor(new ColorStateList(
                 new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
                 new int[]{MUTED, primary ? NIGHT : INK}));
-        b.setBackground(interaction(a, primary ? ACCENT : HIGHLIGHT, 14, 0));
+        if (primary) {
+            GradientDrawable fill = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xFF60E6E7, ACCENT, 0xFF78BEFF});
+            fill.setCornerRadius(dp(a, 16));
+            b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33145180), fill, null));
+        } else {
+            b.setBackground(interaction(a, HIGHLIGHT, 16, 0));
+        }
         b.setMinHeight(dp(a, 52));
         b.setPaddingRelative(dp(a, 12), dp(a, 10), dp(a, 12), dp(a, 10));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);

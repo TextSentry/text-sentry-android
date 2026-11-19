@@ -21,6 +21,27 @@ import org.junit.runner.RunWith;
 /** Guard against white-on-white system bars and drift from the website's brand colors. */
 @RunWith(AndroidJUnit4.class)
 public class BrandThemeTest {
+    @Test public void launcherUsesBrandedStartingWindow() throws Exception {
+        Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        Intent launcher = app.getPackageManager().getLaunchIntentForPackage(app.getPackageName());
+        assertNotNull(launcher);
+        android.content.pm.ActivityInfo info = app.getPackageManager().getActivityInfo(
+                launcher.getComponent(), 0);
+        assertEquals(R.style.Theme_TextSentry_Launch, info.getThemeResource());
+        android.content.res.Resources.Theme theme = app.getResources().newTheme();
+        theme.applyStyle(info.getThemeResource(), true);
+        android.util.TypedValue value = new android.util.TypedValue();
+        if (Build.VERSION.SDK_INT >= 31) {
+            assertTrue(theme.resolveAttribute(android.R.attr.windowSplashScreenAnimatedIcon, value, true));
+            assertEquals(R.drawable.ic_textsentry_foreground, value.resourceId);
+            assertTrue(theme.resolveAttribute(android.R.attr.windowSplashScreenBackground, value, true));
+            assertEquals(UiKit.NIGHT, value.data);
+        } else {
+            assertTrue(theme.resolveAttribute(android.R.attr.windowBackground, value, true));
+            assertEquals(R.drawable.launch_background, value.resourceId);
+        }
+    }
+
     @Test public void paletteMatchesWebsite() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         assertEquals(Color.rgb(5, 14, 32), UiKit.NIGHT);    // --night

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TextSentry.Launch" parent="Theme.TextSentry">
+        <item name="android:windowSplashScreenBackground">@color/textsentry_night</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_textsentry_foreground</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+    </style>
+</resources>

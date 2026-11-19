@@ -2,13 +2,8 @@ package org.textsentry.app;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.view.View;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 /** Simple home/dashboard for the experimental SMS-monitoring flavor. */
@@ -39,16 +34,6 @@ public final class MainActivity extends Activity {
     private void showHome() {
         MmsScanWorker.sync(this);
         LinearLayout root = UiKit.home(this);
-        LinearLayout overview = UiKit.card(this, root, UiKit.NIGHT);
-        ImageView shield = new ImageView(this);
-        shield.setImageResource(R.drawable.ic_shield);
-        shield.setImageTintList(ColorStateList.valueOf(UiKit.ACCENT));
-        shield.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        shield.setPadding(UiKit.dp(this, 14), UiKit.dp(this, 14),
-                UiKit.dp(this, 14), UiKit.dp(this, 14));
-        shield.setBackground(UiKit.shape(0xFF142B48, UiKit.dp(this, 17), 0));
-        overview.addView(shield, new LinearLayout.LayoutParams(UiKit.dp(this, 56), UiKit.dp(this, 56)));
-
         boolean monitoring = settings.monitoring();
         boolean incoming = SetupPermissions.hasIncoming(this);
         if (incoming) permissionBlocked = false;
@@ -73,13 +58,7 @@ public final class MainActivity extends Activity {
             explanation = "Automatic replies are off. Review suggestions in History.";
         }
 
-        TextView status = UiKit.title(this, overview, title);
-        status.setTextColor(Color.WHITE);
-        status.setPadding(0, UiKit.dp(this, 18), 0, 0);
-        TextView detail = UiKit.description(this, overview, explanation);
-        detail.setTextColor(0xFFD0DFFF);
-        detail.setTextSize(15);
-        detail.setPadding(0, UiKit.dp(this, 8), 0, UiKit.dp(this, 8));
+        LinearLayout overview = UiKit.brandPanel(this, root, title, explanation);
 
         if (needsAccess) {
             UiKit.button(this, overview, "Review SMS access", true, () ->

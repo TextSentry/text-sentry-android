@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="312dp" android:height="96dp"
+    android:viewportWidth="312" android:viewportHeight="96">
+    <!-- Message paths converge on the shield, with a quieter outer orbit. -->
+    <path android:pathData="M0,28 H50 Q58,28 65,35 L72,42 Q78,48 87,48 H116 M196,48 H224 Q232,48 239,41 L248,32 Q253,27 261,27 H312"
+        android:strokeColor="#617ED7F5" android:strokeWidth="1.3" />
+    <path android:pathData="M0,61 H49 Q57,61 64,68 L69,73 Q75,79 83,79 H97 M214,70 H239 Q246,70 253,63 L260,56 Q266,50 276,50 H312"
+        android:strokeColor="#608C82E4" android:strokeWidth="1" />
+    <path android:pathData="M156,5 a43,43 0,1 0,0,86 a43,43 0,1 0,0,-86"
+        android:strokeColor="#509EB5E9" android:strokeWidth="0.9" />
+    <path android:pathData="M156,14 a34,34 0,1 0,0,68 a34,34 0,1 0,0,-68"
+        android:fillColor="#FF142941" android:strokeColor="#766BB8DD" android:strokeWidth="1" />
+    <path android:pathData="M113,48 A43,43 0,0 1,141,7.7 M199,48 A43,43 0,0 1,171,88.3"
+        android:strokeColor="#B226D7EE" android:strokeWidth="2" android:strokeLineCap="round" />
+    <path android:pathData="M48,28 a2.5,2.5 0,1 0,5,0 a2.5,2.5 0,1 0,-5,0"
+        android:fillColor="#79CBE3" />
+    <path android:pathData="M259,27 a2.5,2.5 0,1 0,5,0 a2.5,2.5 0,1 0,-5,0"
+        android:fillColor="#A295E8" />
+</vector>
