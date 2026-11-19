@@ -14,21 +14,27 @@ final class AccountStatusClient {
         final String reason;
         final String expiresAt;
         final Boolean isSandbox;
+        final boolean complimentaryAccess;
         Status(String userId, String subscription, boolean managedAccess,
-               String reason, String expiresAt, Boolean isSandbox) {
+               String reason, String expiresAt, Boolean isSandbox, boolean complimentaryAccess) {
             this.userId = userId;
             this.subscription = subscription;
             this.managedAccess = managedAccess;
             this.reason = reason;
             this.expiresAt = expiresAt;
             this.isSandbox = isSandbox;
+            this.complimentaryAccess = complimentaryAccess;
         }
         boolean subscribed() { return "active".equals(subscription); }
         boolean subscriptionValidForBuild(boolean sandboxBuild) {
             return subscribed() && (Boolean.FALSE.equals(isSandbox)
                     || (sandboxBuild && Boolean.TRUE.equals(isSandbox)));
         }
+        boolean managedKeyEligible() {
+            return managedAccess && (complimentaryAccess || subscriptionValidForBuild(false));
+        }
         String label(boolean sandboxBuild) {
+            if (managedAccess && complimentaryAccess) return "Complimentary access active";
             if (subscribed()) {
                 if (Boolean.TRUE.equals(isSandbox))
                     return sandboxBuild ? "TextSentry subscription active (sandbox)"
@@ -63,7 +69,8 @@ final class AccountStatusClient {
                     data.optString("subscription_expires_at", ""),
                     data.isNull("subscription_sandbox") ? null
                             : data.opt("subscription_sandbox") instanceof Boolean
-                            ? data.getBoolean("subscription_sandbox") : null);
+                            ? data.getBoolean("subscription_sandbox") : null,
+                    Boolean.TRUE.equals(data.opt("complimentary_access")));
         } catch (Exception ignored) {
             throw new IllegalArgumentException("Invalid account status");
         }

@@ -19,6 +19,6 @@ final class SubscriptionOnboarding {
     static boolean shouldRetrieveKey(boolean setupContinuation, boolean alreadyFetching,
                                      AccountStatusClient.Status account) {
         return setupContinuation && !alreadyFetching && account != null
-                && account.managedAccess && account.subscriptionValidForBuild(false);
+                && account.managedKeyEligible();
     }
 }

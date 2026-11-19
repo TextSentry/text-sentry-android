@@ -97,6 +97,21 @@ public class AccountStatusClientTest {
         assertFalse(SubscriptionOnboarding.shouldRetrieveKey(true, false, null));
     }
 
+    @Test public void complimentaryAccessIsNotAReceiptButAllowsManagedOnboarding() {
+        AccountStatusClient.Status credit = AccountStatusClient.parse(
+                "{\"user_id\":\"id\",\"subscription_status\":\"unavailable\","
+                + "\"managed_access\":true,\"complimentary_access\":true}");
+        assertFalse(credit.subscribed());
+        assertFalse(credit.subscriptionValidForBuild(false));
+        assertTrue(credit.managedKeyEligible());
+        assertTrue(SubscriptionOnboarding.shouldRetrieveKey(true, false, credit));
+        assertEquals("Complimentary access active", credit.label(false));
+        AccountStatusClient.Status denied = AccountStatusClient.parse(
+                "{\"user_id\":\"id\",\"subscription_status\":\"inactive\","
+                + "\"managed_access\":false,\"complimentary_access\":true}");
+        assertFalse(denied.managedKeyEligible());
+    }
+
     @Test public void unsupportedResponseIsRejected() {
         for (String data : new String[] {"{}", "not json",
                 "{\"subscription_status\":\"active\"}",
