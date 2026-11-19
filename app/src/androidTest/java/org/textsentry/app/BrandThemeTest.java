@@ -73,10 +73,10 @@ public class BrandThemeTest {
             });
             try {
                 assertEquals(UiKit.NIGHT, bars.getColor(0, Color.TRANSPARENT));
-                assertEquals(UiKit.BG, bars.getColor(1, Color.TRANSPARENT));
+                assertEquals(UiKit.NIGHT, bars.getColor(1, Color.TRANSPARENT));
                 assertFalse(bars.getBoolean(2, true)); // white icons on navy
                 if (Build.VERSION.SDK_INT >= 27) {
-                    assertTrue(bars.getBoolean(3, false)); // dark icons on pale navigation
+                    assertFalse(bars.getBoolean(3, false)); // light icons on the dark Home surface
                 }
             } finally {
                 bars.recycle();

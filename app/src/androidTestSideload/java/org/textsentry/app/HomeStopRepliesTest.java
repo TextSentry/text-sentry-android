@@ -44,8 +44,11 @@ public class HomeStopRepliesTest {
             assertTrue(settings.autoSend());
             toggle = home.findViewById(R.id.stop_replies);
             assertTrue(toggle.isChecked());
-            if ("true".equals(InstrumentationRegistry.getArguments().getString("captureHome"))) {
-                Bitmap screenshot = device.getUiAutomation().takeScreenshot();
+            if (android.os.Build.VERSION.SDK_INT >= 34
+                    && "true".equals(InstrumentationRegistry.getArguments().getString("captureHome"))) {
+                device.getUiAutomation().syncInputTransactions();
+                Bitmap screenshot = device.getUiAutomation().takeScreenshot(home.getWindow());
+                assertNotNull("Home window should be rendered", screenshot);
                 try (FileOutputStream file = new FileOutputStream(new File(app.getCacheDir(), "home.png"))) {
                     assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, file));
                 } finally {
