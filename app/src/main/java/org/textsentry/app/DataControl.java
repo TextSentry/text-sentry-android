@@ -10,6 +10,7 @@ public final class DataControl {
     public static void deleteLocalData(Context context) {
         // Block queued sends before attempting async WorkManager cancellation.
         new Settings(context).pause();
+        RoundupWorker.setFrequency(context, 0);
         WorkManager.getInstance(context).cancelAllWork();
         new KeyVault(context).clear();
         // Account refresh/access/ID tokens are stored in a separate Keystore-backed vault.
@@ -28,6 +29,7 @@ public final class DataControl {
         } catch (Exception e) {
             throw new IllegalStateException("Could not erase encrypted message history", e);
         }
+        context.getSharedPreferences("SettingsActivity", Context.MODE_PRIVATE).edit().clear().commit();
         for (String name : new String[] {"textsentry_settings", "textsentry_reply_ledger",
                 "textsentry_secrets", "textsentry_message_history", "textsentry_auth_session",
                 "textsentry_mms_seen", "textsentry_updates", "textsentry_exceptions",
