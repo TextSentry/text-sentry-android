@@ -20,7 +20,6 @@ import net.openid.appauth.AuthorizationService;
 public final class SettingsActivity extends Activity {
     static final String EXTRA_SMS_ACCESS = "focus_sms_access";
     private static final int RECEIVE_SMS_REQUEST = 301;
-    private static final int SEND_SMS_REQUEST = 302;
 
     private Settings settings;
     private KeyVault vault;
@@ -282,28 +281,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private void confirmAutoSend() {
-        if (!settings.monitoring() || !SetupPermissions.hasIncoming(this)) {
-            showSmsHelp();
-            return;
-        }
-        new AlertDialog.Builder(this).setTitle("Enable automatic replies?")
-                .setMessage("TextSentry can send STOP when a message meets your rules. A wrong decision "
-                        + "may confirm that your number is active. Carrier charges may apply.")
-                .setPositiveButton("Enable", (dialog, which) -> {
-                    if (SetupPermissions.hasOutgoing(this)) {
-                        enableAutoSend();
-                    } else {
-                        SetupPermissions.requestOutgoing(this, SEND_SMS_REQUEST);
-                    }
-                }).setNegativeButton("Cancel", null).show();
-    }
-
-    private void enableAutoSend() {
-        if (settings.monitoring() && SetupPermissions.hasIncoming(this)
-                && SetupPermissions.hasOutgoing(this)) {
-            settings.setAutomation(true, true);
-        }
-        renderReplyCard();
+        StopReplies.confirm(this, settings, this::renderReplyCard);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -319,15 +297,8 @@ public final class SettingsActivity extends Activity {
             smsPermissionStep.permissionRequested();
             renderSmsPermissionCard();
             renderReplyCard();
-        } else if (requestCode == SEND_SMS_REQUEST) {
-            if (SetupPermissions.hasOutgoing(this)) {
-                enableAutoSend();
-            } else {
-                new AlertDialog.Builder(this).setTitle("SMS reply access needed")
-                        .setMessage("Allow SMS in Android app permissions, then return here to enable replies.")
-                        .setPositiveButton("Open app settings", (d, w) -> SetupPermissions.openAppSettings(this))
-                        .setNegativeButton("Done", null).show();
-            }
+        } else if (requestCode == StopReplies.PERMISSION_REQUEST) {
+            StopReplies.finishRequest(this, settings, this::renderReplyCard);
         }
     }
 

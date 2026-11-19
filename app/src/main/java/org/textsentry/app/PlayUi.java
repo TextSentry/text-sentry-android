@@ -19,10 +19,13 @@ public final class PlayUi {
 
     static EditText show(Activity activity, Settings settings, String incoming) {
         LinearLayout root = UiKit.home(activity);
-        UiKit.brandPanel(activity, root, "Review a message",
+        UiKit.brandIntro(activity, root, "Review a message",
                 "Paste a text or share it from your messaging app.");
 
         LinearLayout review = UiKit.card(activity, root, 0xFFFFFFFF);
+        LinearLayout.LayoutParams reviewParams = (LinearLayout.LayoutParams) review.getLayoutParams();
+        reviewParams.topMargin = UiKit.dp(activity, 16);
+        review.setLayoutParams(reviewParams);
         EditText message = UiKit.input(activity, review, "Message", incoming, true, false);
         message.setHint("Paste message text");
         CheckBox consent = new CheckBox(activity);

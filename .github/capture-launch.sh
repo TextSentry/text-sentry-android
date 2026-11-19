@@ -14,3 +14,10 @@ adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.L
 wait "$recorder"
 adb pull /sdcard/textsentry-launch.mp4 "$output/launch.mp4"
 adb exec-out screencap -p > "$output/welcome.png"
+
+# Capture Home using the synthetic account and reply preferences from its UI test.
+adb install -r app/build/outputs/apk/androidTest/sideload/debug/app-sideload-debug-androidTest.apk
+adb shell am instrument -w -e class org.textsentry.app.HomeStopRepliesTest -e captureHome true \
+  org.textsentry.app.test/androidx.test.runner.AndroidJUnitRunner
+adb exec-out run-as org.textsentry.app cat cache/home.png > "$output/home.png"
+test -s "$output/home.png"
