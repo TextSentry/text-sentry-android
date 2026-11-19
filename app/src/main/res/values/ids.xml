@@ -4,4 +4,5 @@
     <item name="open_settings" type="id" />
     <item name="sms_help" type="id" />
     <item name="battery_help" type="id" />
+    <item name="stop_replies" type="id" />
 </resources>

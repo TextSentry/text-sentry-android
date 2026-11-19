@@ -35,7 +35,7 @@ Existing completed installations keep their choices and message history. Sideloa
 
 ## App experience
 
-Sideload Home shows the current monitoring status and a primary **Start Monitoring** or **Pause Monitoring** action. Play Home shows a manual message review form with per-message consent and a **Compose a reply** dialog. Both editions have History and Settings in the toolbar. Settings groups filter categories, minimum confidence, exceptions, account controls, local data, and sample analysis. Sideload Settings also contains the explicit opt-in for **Automatic STOP replies**, SMS permissions, battery guidance, and updates. Tap the information icon beside a setting for more detail.
+Sideload Home shows the current monitoring status and a primary **Start Monitoring** or **Pause Monitoring** action. The **STOP replies** switch enables automatic replies after confirmation and outgoing SMS access. Switching it off keeps SMS and MMS monitoring active. Pausing monitoring turns replies off too. Play Home shows a manual message review form with per-message consent and a **Compose a reply** dialog. Both editions have History and Settings in the toolbar. Settings groups filter categories, minimum confidence, exceptions, account controls, local data, and sample analysis. Sideload Settings also contains the explicit opt-in for **Automatic STOP replies**, SMS permissions, battery guidance, and updates. Tap the information icon beside a setting for more detail.
 
 ### Sideload app updates
 

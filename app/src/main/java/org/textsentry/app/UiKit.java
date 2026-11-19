@@ -56,21 +56,21 @@ public final class UiKit {
         return line;
     }
 
-    private static void styleSystemBars(Activity a) {
+    private static void styleSystemBars(Activity a, boolean dark) {
         Window window = a.getWindow();
         // The theme provides these colors even before onCreate draws a single frame.
         // Android 15+ enforces edge-to-edge, so a permanent navy overlay is drawn below.
         if (Build.VERSION.SDK_INT < 35) {
             window.setStatusBarColor(NIGHT);
-            window.setNavigationBarColor(BG);
+            window.setNavigationBarColor(dark ? NIGHT : BG);
         }
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false);
         } else {
             View decor = window.getDecorView();
-            decor.setSystemUiVisibility((decor.getSystemUiVisibility()
-                    & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
-                    | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+            int flags = decor.getSystemUiVisibility()
+                    & ~(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+            decor.setSystemUiVisibility(dark ? flags : flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         }
     }
 
@@ -83,9 +83,14 @@ public final class UiKit {
     }
 
     private static LinearLayout screen(Activity a, String title, boolean back, boolean home) {
-        styleSystemBars(a);
+        styleSystemBars(a, home);
         FrameLayout frame = new FrameLayout(a);
-        frame.setBackgroundColor(BG);
+        if (home) {
+            frame.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{NIGHT, 0xFF10243B, 0xFF12182F, NIGHT}));
+        } else {
+            frame.setBackgroundColor(BG);
+        }
         LinearLayout page = vertical(a);
         frame.addView(page, new FrameLayout.LayoutParams(-1, -1));
 
@@ -134,7 +139,8 @@ public final class UiKit {
         };
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPaddingRelative(dp(a, 20), dp(a, 24), dp(a, 20), dp(a, 28));
-        scrollContent.addView(content, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+        int alignment = home ? Gravity.CENTER : Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        scrollContent.addView(content, new FrameLayout.LayoutParams(-1, -2, alignment));
 
         // Android 15+ requires an in-app scrim and explicit insets for edge-to-edge.
         View statusScrim = new View(a);
@@ -145,7 +151,7 @@ public final class UiKit {
             WindowInsetsController controller = a.getWindow().getInsetsController();
             if (controller != null) {
                 controller.setSystemBarsAppearance(
-                        WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                        home ? 0 : WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
                         WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
                                 | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
@@ -174,6 +180,11 @@ public final class UiKit {
         background.setCornerRadius(dp(a, 24));
         panel.setBackground(background);
 
+        brandIntro(a, panel, title, description);
+        return panel;
+    }
+
+    static void brandIntro(Activity a, LinearLayout panel, String title, String description) {
         FrameLayout illustration = new FrameLayout(a);
         illustration.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         panel.addView(illustration, new LinearLayout.LayoutParams(-1, dp(a, 96)));
@@ -191,7 +202,6 @@ public final class UiKit {
         TextView detail = description(a, panel, description);
         detail.setTextColor(0xFFCDDCED);
         detail.setTextSize(15);
-        return panel;
     }
 
     static ScrollView scrollable(Activity a, View content) {

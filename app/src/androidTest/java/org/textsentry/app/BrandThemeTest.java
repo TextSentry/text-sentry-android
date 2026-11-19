@@ -97,8 +97,8 @@ public class BrandThemeTest {
                 assertNotNull(controller);
                 assertEquals(0, controller.getSystemBarsAppearance()
                         & WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                assertTrue((controller.getSystemBarsAppearance()
-                        & WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS) != 0);
+                assertEquals(0, controller.getSystemBarsAppearance()
+                        & WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(activity::finish);

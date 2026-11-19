@@ -3,6 +3,10 @@ package org.textsentry.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.view.View;
+import android.widget.Switch;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -38,7 +42,7 @@ public final class MainActivity extends Activity {
         boolean incoming = SetupPermissions.hasIncoming(this);
         if (incoming) permissionBlocked = false;
         boolean needsAccess = !incoming && (permissionBlocked || monitoring);
-        boolean replying = monitoring && settings.autoSend() && SetupPermissions.hasOutgoing(this);
+        boolean replyAccessMissing = settings.autoSend() && !SetupPermissions.hasOutgoing(this);
         String title;
         String explanation;
         if (needsAccess) {
@@ -46,33 +50,75 @@ public final class MainActivity extends Activity {
             explanation = "Allow incoming messages in Settings to monitor your inbox.";
         } else if (!monitoring) {
             title = "Monitoring paused";
-            explanation = "Start monitoring to preview which messages qualify for a STOP reply.";
+            explanation = "Start monitoring to review incoming messages.";
         } else if (settings.categoryMask() == 0) {
             title = "No filters selected";
             explanation = "Choose what to filter in Settings to resume analysis.";
-        } else if (replying) {
-            title = "Auto-replies on";
-            explanation = "TextSentry sends STOP when a message matches your rules.";
+        } else if (replyAccessMissing) {
+            title = "Reply access needed";
+            explanation = "Monitoring is active. Allow outgoing SMS to send STOP replies.";
         } else {
-            title = "Previewing messages";
-            explanation = "Automatic replies are off. Review suggestions in History.";
+            title = "Monitoring active";
+            explanation = settings.autoSend() ? "Matching messages receive a STOP reply."
+                    : "Review suggested replies in History.";
         }
 
-        LinearLayout overview = UiKit.brandPanel(this, root, title, explanation);
+        UiKit.brandIntro(this, root, title, explanation);
+        addReplySwitch(root, monitoring && incoming);
 
         if (needsAccess) {
-            UiKit.button(this, overview, "Review SMS access", true, () ->
+            UiKit.button(this, root, "Review SMS access", true, () ->
                     startActivity(new Intent(this, SettingsActivity.class)
                             .putExtra(SettingsActivity.EXTRA_SMS_ACCESS, true)));
         }
+        if (replyAccessMissing && monitoring && incoming) {
+            UiKit.button(this, root, "Restore reply access", false, this::confirmReplies);
+        }
         if (monitoring) {
-            UiKit.button(this, overview, "Pause Monitoring", !needsAccess, () -> {
+            UiKit.button(this, root, "Pause Monitoring", !needsAccess, () -> {
                 settings.pause();
                 showHome();
             });
         } else if (!needsAccess) {
-            UiKit.button(this, overview, "Start Monitoring", true, this::startMonitoring);
+            UiKit.button(this, root, "Start Monitoring", true, this::startMonitoring);
         }
+    }
+
+    private void addReplySwitch(LinearLayout root, boolean canEnable) {
+        View divider = new View(this);
+        divider.setBackgroundColor(0xFF33475F);
+        LinearLayout.LayoutParams line = new LinearLayout.LayoutParams(-1, UiKit.dp(this, 1));
+        line.topMargin = UiKit.dp(this, 22);
+        root.addView(divider, line);
+
+        Switch toggle = new Switch(this);
+        toggle.setId(R.id.stop_replies);
+        toggle.setSaveEnabled(false);
+        toggle.setText("STOP replies");
+        toggle.setTextSize(17);
+        toggle.setMinHeight(UiKit.dp(this, 64));
+        boolean optedIn = settings.autoSend();
+        toggle.setEnabled(canEnable || optedIn);
+        toggle.setTextColor(toggle.isEnabled() ? Color.WHITE : 0xFFB1BED0);
+        int[][] states = {{android.R.attr.state_checked}, {}};
+        toggle.setThumbTintList(new ColorStateList(states, new int[]{UiKit.ACCENT, 0xFFCDD6E3}));
+        toggle.setTrackTintList(new ColorStateList(states, new int[]{0xFF317C8F, 0xFF526177}));
+        toggle.setChecked(optedIn);
+        root.addView(toggle, new LinearLayout.LayoutParams(-1, -2));
+        toggle.setOnCheckedChangeListener((button, checked) -> {
+            if (checked == settings.autoSend()) return;
+            if (!checked) {
+                settings.setAutomation(settings.monitoring(), false);
+                showHome();
+            } else {
+                toggle.setChecked(false);
+                confirmReplies();
+            }
+        });
+    }
+
+    private void confirmReplies() {
+        StopReplies.confirm(this, settings, this::showHome);
     }
 
     private void startMonitoring() {
@@ -111,6 +157,8 @@ public final class MainActivity extends Activity {
         if (requestCode == MESSAGE_PERMISSION_REQUEST) {
             // Check the actual RECEIVE_SMS grant; READ_SMS denial must not block SMS.
             finishMonitoringRequest();
+        } else if (requestCode == StopReplies.PERMISSION_REQUEST) {
+            StopReplies.finishRequest(this, settings, this::showHome);
         }
     }
 }
