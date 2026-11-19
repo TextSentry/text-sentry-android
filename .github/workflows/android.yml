@@ -81,7 +81,9 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
-          script: ./gradlew --no-daemon :app:connectedSideloadDebugAndroidTest :app:connectedPlayDebugAndroidTest
+          script: |
+            ./gradlew --no-daemon :app:connectedSideloadDebugAndroidTest :app:connectedPlayDebugAndroidTest
+            bash .github/capture-launch.sh
       - name: Instrumentation reports
         if: always()
         uses: actions/upload-artifact@v7

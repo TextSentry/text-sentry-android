@@ -19,6 +19,7 @@ public final class SetupActivity extends Activity {
     private SmsPermissionStep smsPermissionStep = new SmsPermissionStep();
 
     @Override public void onCreate(Bundle state) {
+        setTheme(R.style.Theme_TextSentry);
         super.onCreate(state);
         if (state != null) {
             showingOwnKey = state.getBoolean("show_own_key", false);
@@ -110,7 +111,10 @@ public final class SetupActivity extends Activity {
     private void renderLogin() {
         LinearLayout root = showingOwnKey
                 ? stage("Connect your key", "Enter your TypeSafe API key to get started.")
-                : stage("Get started", "Sign in with Google to set up TextSentry.");
+                : UiKit.screen(this, "", false);
+        if (!showingOwnKey) {
+            UiKit.brandPanel(this, root, "Get started", "Sign in with Google to set up TextSentry.");
+        }
         LinearLayout card = UiKit.card(this, root, 0xFFFFFFFF);
         if (!showingOwnKey) {
             UiKit.googleSignInButton(this, card, () -> {

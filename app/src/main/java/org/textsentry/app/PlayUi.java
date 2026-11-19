@@ -19,8 +19,8 @@ public final class PlayUi {
 
     static EditText show(Activity activity, Settings settings, String incoming) {
         LinearLayout root = UiKit.home(activity);
-        UiKit.title(activity, root, "Review a message");
-        UiKit.description(activity, root, "Paste a text or share it from your messaging app.");
+        UiKit.brandPanel(activity, root, "Review a message",
+                "Paste a text or share it from your messaging app.");
 
         LinearLayout review = UiKit.card(activity, root, 0xFFFFFFFF);
         EditText message = UiKit.input(activity, review, "Message", incoming, true, false);
