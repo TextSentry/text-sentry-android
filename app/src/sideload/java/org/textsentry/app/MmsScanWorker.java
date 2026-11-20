@@ -37,6 +37,8 @@ public final class MmsScanWorker extends Worker {
         Settings settings = new Settings(context);
         return SetupGate.canEnterApp(context) && settings.monitoring()
                 && settings.mmsEnabled() && settings.mmsSinceMs() > 0
+                && context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED
                 && context.checkSelfPermission(Manifest.permission.READ_SMS)
                     == PackageManager.PERMISSION_GRANTED;
     }
@@ -78,10 +80,11 @@ public final class MmsScanWorker extends Worker {
         String generation = settings.generation();
         try {
             for (MmsInboxReader.Item item : MmsInboxReader.recent(
-                    context.getContentResolver(), settings.mmsSinceMs())) {
+                    context, settings.mmsSinceMs())) {
                 if (!authorized(context) || !generation.equals(new Settings(context).generation()))
                     return Result.success();
-                if (!MmsInboxPolicy.canClassify(item.body, item.sender)) continue;
+                if (!MmsInboxPolicy.canClassify(item.body, item.sender)
+                        || !ContactSafety.canAnalyze(context, item.sender)) continue;
                 String fingerprint = Long.toString(item.id);
                 synchronized (LOCK) {
                     SharedPreferences prefs = context.getSharedPreferences(LEDGER,
@@ -93,6 +96,7 @@ public final class MmsScanWorker extends Worker {
                             .putString("sender", item.sender)
                             .putString("sms", item.body)
                             .putString("source", "mms")
+                            .putLong("received_at_ms", item.timestampSeconds * 1000L)
                             .putBoolean("reply_allowed", item.allowReply)
                             .putString("generation", generation)
                             .build();

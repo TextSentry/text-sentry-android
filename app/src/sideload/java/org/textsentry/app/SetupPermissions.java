@@ -22,6 +22,13 @@ final class SetupPermissions {
         return activity.checkSelfPermission(Manifest.permission.READ_SMS)
                 == PackageManager.PERMISSION_GRANTED;
     }
+    static boolean hasContacts(Activity activity) {
+        return activity.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+    static void requestContacts(Activity activity, int requestCode) {
+        activity.requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, requestCode);
+    }
     static boolean hasOutgoing(Activity activity) {
         return activity.checkSelfPermission(Manifest.permission.SEND_SMS)
                 == PackageManager.PERMISSION_GRANTED;

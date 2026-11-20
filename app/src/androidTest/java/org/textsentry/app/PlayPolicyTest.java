@@ -22,7 +22,7 @@ public class PlayPolicyTest {
                 ? java.util.Collections.emptyList() : Arrays.asList(info.requestedPermissions));
         if ("play".equals(BuildConfig.FLAVOR)) {
             for (String name : new String[] {"READ_SMS", "RECEIVE_SMS", "SEND_SMS",
-                    "WRITE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH", "READ_CALL_LOG",
+                    "WRITE_SMS", "RECEIVE_MMS", "RECEIVE_WAP_PUSH", "READ_CONTACTS", "READ_CALL_LOG",
                     "WRITE_CALL_LOG", "PROCESS_OUTGOING_CALLS"}) {
                 assertFalse("Play build must not request " + name,
                         permissions.contains("android.permission." + name));
@@ -31,6 +31,7 @@ public class PlayPolicyTest {
             assertTrue(permissions.contains("android.permission.RECEIVE_SMS"));
             assertTrue(permissions.contains("android.permission.SEND_SMS"));
             assertTrue(permissions.contains("android.permission.READ_SMS"));
+            assertTrue(permissions.contains("android.permission.READ_CONTACTS"));
             assertTrue(permissions.contains("android.permission.RECEIVE_MMS"));
             assertTrue(permissions.contains("android.permission.RECEIVE_WAP_PUSH"));
         }

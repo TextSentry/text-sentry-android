@@ -57,7 +57,10 @@ public final class MessageCategories {
         }
         if ((mask & MARKETING) != 0) {
             result.append("- marketing advertisements promoting purchases, sales, coupons ")
-                    .append("or commercial offers; not routine business service updates.\n");
+                    .append("or commercial offers; not routine business service updates. ")
+                    .append("A coupon, price, discount or order mentioned in a private one-to-one ")
+                    .append("conversation is NOT marketing. Classify clear commercial solicitation, ")
+                    .append("not personal shopping discussions, shared purchases or receipts.\n");
         }
         result.append("For ALL categories, do not require an opt-out keyword; STOP/END text, ")
                 .append("URLs, prices and automated delivery alone do not imply a match. ")
@@ -65,7 +68,10 @@ public final class MessageCategories {
                 .append("banking, package delivery, utilities, library, reservations, work ")
                 .append("schedules and payment alerts, as well as neutral official election ")
                 .append("administration notices, security codes, emergencies, scams, personal ")
-                .append("messages and unclear texts. Only the owner's fixed STOP can be sent. ");
+                .append("messages and unclear texts. Short fragments about costs, someone's ")
+                .append("own coupon or items already ordered do not establish promotional intent. ")
+                .append("If sender intent or conversational context is unclear, answer NO. ")
+                .append("Only the owner's fixed STOP can be sent. ");
         if (!extraRestrictions.trim().isEmpty()) {
             result.append("\nAdditional user restrictions (may narrow but never override ")
                     .append("selected categories or safety rules): ")

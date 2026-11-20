@@ -31,8 +31,15 @@ public final class SmsWorker extends Worker {
                     != PackageManager.PERMISSION_GRANTED)) return Result.success();
         String sender = getInputData().getString("sender");
         String message = getInputData().getString("sms");
+        long receivedAtMs = getInputData().getLong("received_at_ms", 0L);
         if (!MessagePolicy.eligible(sender, message)) {
             settings.addHistory("Ignored (local safety rule)");
+            return Result.success();
+        }
+        // Saved contacts are excluded before any AI request, history, or ledger entry.
+        if (!ContactSafety.canAnalyze(context, sender)) return Result.success();
+        if (!ReplyTiming.isFresh(receivedAtMs, System.currentTimeMillis())) {
+            settings.addHistory("Skipped (stale incoming message)");
             return Result.success();
         }
         try {
@@ -55,7 +62,8 @@ public final class SmsWorker extends Worker {
                     combinedInstructions, message, settings.confidence() / 100.0,
                     DeveloperMode.traceSink(context, source));
             if (!settings.monitoring() || !settings.generation().equals(queuedGeneration)
-                    || ("mms".equals(source) && !settings.mmsEnabled())) {
+                    || ("mms".equals(source) && !settings.mmsEnabled())
+                    || !ContactSafety.canAnalyze(context, sender)) {
                 return Result.success();
             }
             AiDecision decision = evaluation.decision;
@@ -84,10 +92,15 @@ public final class SmsWorker extends Worker {
                 }
                 // Recheck immediately before invoking Android; rules can change while the
                 // model request or ledger reservation is in flight. Decrypt errors fail closed.
-                if (!settings.generation().equals(queuedGeneration)
+                // A contact newly saved while the model evaluated should not appear
+                // in any new TextSentry history entry, even a blocked-send entry.
+                if (!ContactSafety.canAnalyze(context, sender)) return Result.success();
+                if (!settings.monitoring() || !settings.autoSend()
+                        || !settings.generation().equals(queuedGeneration)
+                        || !ReplyTiming.isFresh(receivedAtMs, System.currentTimeMillis())
                         || new ExceptionStore(context).matches(sender, message)) {
-                    history.add(sender, message, evaluation.confidence, "", "excepted", source);
-                    settings.addHistory("Protected by exception or updated rules: no STOP");
+                    history.add(sender, message, evaluation.confidence, "", "blocked", source);
+                    settings.addHistory("Blocked: stale message, exception or updated rules");
                     return Result.success();
                 }
                 SmsManager manager = context.getSystemService(SmsManager.class);

@@ -40,14 +40,16 @@ public final class MainActivity extends Activity {
         LinearLayout root = UiKit.home(this);
         boolean monitoring = settings.monitoring();
         boolean incoming = SetupPermissions.hasIncoming(this);
-        if (incoming) permissionBlocked = false;
-        boolean needsAccess = !incoming && (permissionBlocked || monitoring);
+        boolean contacts = SetupPermissions.hasContacts(this);
+        if (incoming && contacts) permissionBlocked = false;
+        boolean needsAccess = (!incoming || !contacts) && (permissionBlocked || monitoring);
         boolean replyAccessMissing = settings.autoSend() && !SetupPermissions.hasOutgoing(this);
         String title;
         String explanation;
         if (needsAccess) {
-            title = "SMS access needed";
-            explanation = "Allow incoming messages in Settings to monitor your inbox.";
+            title = !contacts ? "Contacts access needed" : "SMS access needed";
+            explanation = !contacts ? "Allow contacts access to exclude saved people from filtering."
+                    : "Allow incoming messages in Settings to monitor your inbox.";
         } else if (!monitoring) {
             title = "Monitoring paused";
             explanation = "Start monitoring to review incoming messages.";
@@ -64,14 +66,14 @@ public final class MainActivity extends Activity {
         }
 
         UiKit.brandIntro(this, root, title, explanation);
-        addReplySwitch(root, monitoring && incoming);
+        addReplySwitch(root, monitoring && incoming && contacts);
 
         if (needsAccess) {
-            UiKit.button(this, root, "Review SMS access", true, () ->
+            UiKit.button(this, root, "Review message access", true, () ->
                     startActivity(new Intent(this, SettingsActivity.class)
                             .putExtra(SettingsActivity.EXTRA_SMS_ACCESS, true)));
         }
-        if (replyAccessMissing && monitoring && incoming) {
+        if (replyAccessMissing && monitoring && incoming && contacts) {
             UiKit.button(this, root, "Restore reply access", false, this::confirmReplies);
         }
         if (monitoring) {
@@ -128,14 +130,15 @@ public final class MainActivity extends Activity {
             return;
         }
         String[] missing = MonitoringPermissions.missing(
-                SetupPermissions.hasIncoming(this), SetupPermissions.hasInbox(this));
+                SetupPermissions.hasIncoming(this), SetupPermissions.hasInbox(this),
+                SetupPermissions.hasContacts(this));
         if (missing.length > 0) {
             // One Android permission request covers both message formats, without
             // a second MMS agreement or an extra Home toggle.
             if (!SmsPermissionRequestGuard.run(() ->
                     requestPermissions(missing, MESSAGE_PERMISSION_REQUEST))) {
-                // Restricted READ_SMS may be rejected by the installer. Incoming SMS
-                // monitoring should still start when RECEIVE_SMS is available.
+                // Restricted READ_SMS may be rejected by the installer. Contact
+                // access remains mandatory even when only SMS can be monitored.
                 finishMonitoringRequest();
             }
             return;
@@ -144,7 +147,8 @@ public final class MainActivity extends Activity {
     }
 
     private void finishMonitoringRequest() {
-        permissionBlocked = !SetupPermissions.hasIncoming(this);
+        permissionBlocked = !SetupPermissions.hasIncoming(this)
+                || !SetupPermissions.hasContacts(this);
         if (!permissionBlocked && AnalysisAccess.hasProvider(this)) {
             settings.startMonitoring();
         }
@@ -155,7 +159,7 @@ public final class MainActivity extends Activity {
                                                       int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MESSAGE_PERMISSION_REQUEST) {
-            // Check the actual RECEIVE_SMS grant; READ_SMS denial must not block SMS.
+            // Both incoming SMS and contacts must be granted; READ_SMS is optional.
             finishMonitoringRequest();
         } else if (requestCode == StopReplies.PERMISSION_REQUEST) {
             StopReplies.finishRequest(this, settings, this::showHome);
