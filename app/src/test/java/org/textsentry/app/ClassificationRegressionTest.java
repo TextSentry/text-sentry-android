@@ -72,6 +72,15 @@ public class ClassificationRegressionTest {
         assertFalse(voteOnly.contains("candidate or political party campaigns"));
     }
 
+    @Test public void personalCouponChatIsExplicitlyExcludedFromMarketingInstructions() {
+        String prompt = MessageCategories.compose(MessageCategories.ALL, "");
+        for (String fragment : new String[]{"private one-to-one", "coupon", "personal shopping",
+                "If sender intent or conversational context is unclear, answer NO"}) {
+            assertTrue(fragment, prompt.contains(fragment));
+        }
+        assertTrue(ClassificationFixtures.PERSONAL_SHOPPING.length >= 5);
+    }
+
     @Test public void serviceMessagesRemainExclusionsWhenEveryCategoryIsEnabled() {
         String instructions = MessageCategories.compose(MessageCategories.ALL, "");
         for (String phrase : new String[] {

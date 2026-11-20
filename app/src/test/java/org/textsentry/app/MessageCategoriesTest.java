@@ -8,6 +8,7 @@ public class MessageCategoriesTest {
         assertEquals(MessageCategories.ALL, MessageCategories.DEFAULT_MASK);
         String instructions = MessageCategories.compose(MessageCategories.DEFAULT_MASK, "");
         assertTrue(instructions.contains("marketing advertisements"));
+        assertTrue(instructions.contains("private one-to-one"));
         assertTrue(instructions.contains("nonpartisan get-out-the-vote"));
         assertTrue(instructions.contains("candidate or political party campaigns"));
     }
