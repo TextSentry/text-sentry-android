@@ -9,7 +9,8 @@ final class StopReplies {
     private StopReplies() {}
 
     static void confirm(Activity activity, Settings settings, Runnable refresh) {
-        if (!settings.monitoring() || !SetupPermissions.hasIncoming(activity)) {
+        if (!settings.monitoring() || !SetupPermissions.hasIncoming(activity)
+                || !SetupPermissions.hasContacts(activity)) {
             refresh.run();
             return;
         }
@@ -28,7 +29,8 @@ final class StopReplies {
     static void finishRequest(Activity activity, Settings settings, Runnable refresh) {
         if (activity.isFinishing() || !SetupGate.canEnterApp(activity)) return;
         if (SetupPermissions.hasOutgoing(activity)) {
-            if (settings.monitoring() && SetupPermissions.hasIncoming(activity)) {
+            if (settings.monitoring() && SetupPermissions.hasIncoming(activity)
+                    && SetupPermissions.hasContacts(activity)) {
                 settings.setAutomation(true, true);
             }
         } else {

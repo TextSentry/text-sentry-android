@@ -11,6 +11,9 @@ final class SetupPermissions {
     static boolean hasIncoming(Activity activity) { return false; }
     static boolean hasInbox(Activity activity) { return false; }
     static boolean hasOutgoing(Activity activity) { return false; }
+    // Manual Play analysis does not read contacts; these methods are never invoked.
+    static boolean hasContacts(Activity activity) { return true; }
+    static void requestContacts(Activity activity, int requestCode) { }
     static void requestIncoming(Activity activity, int requestCode) { }
     static void requestOutgoing(Activity activity, int requestCode) { }
     static void openAppSettings(Activity activity) { }
