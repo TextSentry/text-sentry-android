@@ -1,6 +1,6 @@
 # TextSentry Privacy Policy
 
-**Last updated:** November 3, 2026
+**Last updated:** November 20, 2026
 
 **App:** TextSentry (`org.textsentry.app`). This policy applies to both the Google Play edition and the separately distributed sideload edition.
 

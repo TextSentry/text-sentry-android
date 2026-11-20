@@ -92,13 +92,15 @@ public final class SmsWorker extends Worker {
                 }
                 // Recheck immediately before invoking Android; rules can change while the
                 // model request or ledger reservation is in flight. Decrypt errors fail closed.
+                // A contact newly saved while the model evaluated should not appear
+                // in any new TextSentry history entry, even a blocked-send entry.
+                if (!ContactSafety.canAnalyze(context, sender)) return Result.success();
                 if (!settings.monitoring() || !settings.autoSend()
                         || !settings.generation().equals(queuedGeneration)
-                        || !ContactSafety.canAnalyze(context, sender)
                         || !ReplyTiming.isFresh(receivedAtMs, System.currentTimeMillis())
                         || new ExceptionStore(context).matches(sender, message)) {
                     history.add(sender, message, evaluation.confidence, "", "blocked", source);
-                    settings.addHistory("Blocked: contact, stale message, exception or updated rules");
+                    settings.addHistory("Blocked: stale message, exception or updated rules");
                     return Result.success();
                 }
                 SmsManager manager = context.getSystemService(SmsManager.class);

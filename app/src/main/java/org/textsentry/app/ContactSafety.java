@@ -18,16 +18,20 @@ final class ContactSafety {
 
     static boolean canAnalyze(Context context, String sender) {
         if (context == null) return false;
-        boolean granted = context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
-                == PackageManager.PERMISSION_GRANTED;
-        return canAnalyze(granted, sender, number -> {
-            Uri lookup = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                    Uri.encode(number));
-            try (Cursor cursor = context.getContentResolver().query(lookup,
-                    new String[]{ContactsContract.PhoneLookup._ID}, null, null, null)) {
-                return cursor == null ? null : cursor.moveToFirst();
-            }
-        });
+        try {
+            boolean granted = context.checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED;
+            return canAnalyze(granted, sender, number -> {
+                Uri lookup = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                        Uri.encode(number));
+                try (Cursor cursor = context.getContentResolver().query(lookup,
+                        new String[]{ContactsContract.PhoneLookup._ID}, null, null, null)) {
+                    return cursor == null ? null : cursor.moveToFirst();
+                }
+            });
+        } catch (RuntimeException unavailable) {
+            return false; // Permission/provider failures never allow analysis.
+        }
     }
 
     static boolean canAnalyze(boolean granted, String sender, Lookup lookup) {
