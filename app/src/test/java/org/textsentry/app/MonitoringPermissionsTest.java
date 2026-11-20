@@ -5,26 +5,26 @@ import static org.junit.Assert.*;
 import android.Manifest;
 import org.junit.Test;
 
-/** Start Monitoring asks for all missing read permissions in one operation. */
+/** Monitoring must have contact access before any SMS/MMS analysis. */
 public class MonitoringPermissionsTest {
-    @Test public void requestsBothMessagePermissionsWhenMissing() {
+    @Test public void requestsAllMissingPermissionsTogether() {
         assertArrayEquals(new String[]{Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.READ_SMS}, MonitoringPermissions.missing(false, false));
+                Manifest.permission.READ_SMS, Manifest.permission.READ_CONTACTS},
+                MonitoringPermissions.missing(false, false, false));
     }
 
-    @Test public void requestsReadSmsOnlyWhenReceiveWasGrantedDuringSetup() {
-        assertArrayEquals(new String[]{Manifest.permission.READ_SMS},
-                MonitoringPermissions.missing(true, false));
+    @Test public void requiresContactsEvenWhenSmsWasAlreadyAllowed() {
+        assertArrayEquals(new String[]{Manifest.permission.READ_CONTACTS},
+                MonitoringPermissions.missing(true, true, false));
+        assertArrayEquals(new String[]{Manifest.permission.READ_SMS,
+                Manifest.permission.READ_CONTACTS}, MonitoringPermissions.missing(true, false, false));
     }
 
-    @Test public void requestsReceiveOnlyWhenReadWasAlreadyGranted() {
+    @Test public void doesNotReRequestGrantedPermissionsOrSendSms() {
+        assertArrayEquals(new String[0], MonitoringPermissions.missing(true, true, true));
         assertArrayEquals(new String[]{Manifest.permission.RECEIVE_SMS},
-                MonitoringPermissions.missing(false, true));
-    }
-
-    @Test public void neverRequestsSendSmsOrUnnecessaryPrompts() {
-        assertArrayEquals(new String[0], MonitoringPermissions.missing(true, true));
-        for (String permission : MonitoringPermissions.missing(false, false)) {
+                MonitoringPermissions.missing(false, true, true));
+        for (String permission : MonitoringPermissions.missing(false, false, false)) {
             assertNotEquals(Manifest.permission.SEND_SMS, permission);
         }
     }

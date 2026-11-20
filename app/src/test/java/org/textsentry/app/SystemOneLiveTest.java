@@ -87,6 +87,18 @@ public class SystemOneLiveTest {
                 score >= 0.90);
     }
 
+    @Test public void personalShoppingAndCouponMessagesScoreBelowReplyThreshold() throws Exception {
+        String key = System.getenv("TYPESAFE_AI_API_KEY");
+        Assume.assumeTrue("Requires TYPESAFE_AI_API_KEY", key != null && !key.trim().isEmpty());
+        SystemOneClient client = new SystemOneClient();
+        String rule = MessageCategories.compose(MessageCategories.ALL, "");
+        for (ClassificationFixtures.Case example : ClassificationFixtures.PERSONAL_SHOPPING) {
+            double score = client.score(key, SystemOneClient.MODEL, rule, example.sms);
+            assertTrue(example.name + " is personal chat, not an advertisement: " + score,
+                    score < 0.90);
+        }
+    }
+
     @Test public void legitimateAutomatedServiceNotificationsScoreLow() throws Exception {
         String key = System.getenv("TYPESAFE_AI_API_KEY");
         Assume.assumeTrue("Requires TYPESAFE_AI_API_KEY", key != null && !key.trim().isEmpty());

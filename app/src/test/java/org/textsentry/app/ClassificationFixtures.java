@@ -43,6 +43,15 @@ final class ClassificationFixtures {
         }
     }
 
+    /** Synthetic one-to-one shopping chat, not an advertisement or solicitation. */
+    static final Case[] PERSONAL_SHOPPING = {
+        new Case("my coupon", "It's $24 for three with my coupon"),
+        new Case("shared purchase price", "So it'd be an extra 15 bucks"),
+        new Case("already ordered", "Those have been ordered as well"),
+        new Case("personal discount", "I do have a 20% off coupon"),
+        new Case("gift conversation", "Are we exchanging gifts with your siblings this year?")
+    };
+
     static final Case[] SERVICE_NOTIFICATIONS = {
         new Case("pharmacy prescription ready",
                 "Your prescription is ready for pickup at Example Pharmacy. Copay: $12.50."),
