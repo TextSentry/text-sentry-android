@@ -1,6 +1,7 @@
 package org.textsentry.app;
 
 import android.content.ContentResolver;
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.Telephony;
@@ -29,7 +30,8 @@ final class MmsInboxReader {
 
     private MmsInboxReader() {}
 
-    static List<Item> recent(ContentResolver resolver, long sinceMillis) {
+    static List<Item> recent(Context context, long sinceMillis) {
+        ContentResolver resolver = context.getContentResolver();
         List<Item> results = new ArrayList<>();
         if (sinceMillis <= 0) return results;
         // The provider stores MMS dates as seconds, unlike SMS millisecond dates.
@@ -46,7 +48,8 @@ final class MmsInboxReader {
                 if (cursor.getInt(2) != 132
                         || !MmsInboxPolicy.isNewInboxMessage(date, sinceMillis, true)) continue;
                 String sender = fromAddress(resolver, id);
-                if (sender == null) continue;
+                // Skip saved contacts BEFORE reading their MMS text parts or subject.
+                if (sender == null || !ContactSafety.canAnalyze(context, sender)) continue;
                 String body = textAndImages(resolver, id, cursor.getString(3));
                 int recipients = recipientCount(resolver, id);
                 results.add(new Item(id, date, sender, body,

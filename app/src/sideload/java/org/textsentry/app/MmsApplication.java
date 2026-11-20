@@ -23,6 +23,8 @@ public final class MmsApplication extends Application {
         Settings settings = new Settings(this);
         boolean enabled = SetupGate.canEnterApp(this) && settings.monitoring()
                 && settings.mmsEnabled()
+                && checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                == PackageManager.PERMISSION_GRANTED
                 && checkSelfPermission(Manifest.permission.READ_SMS)
                 == PackageManager.PERMISSION_GRANTED;
         if (!enabled && observer != null) {

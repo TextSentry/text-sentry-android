@@ -20,7 +20,7 @@ public final class SmsReceiver extends BroadcastReceiver {
         SmsMessage[] parts = Telephony.Sms.Intents.getMessagesFromIntent(intent);
         if (parts == null || parts.length == 0) return;
         String sender = parts[0].getOriginatingAddress();
-        if (sender == null) return;
+        if (sender == null || !ContactSafety.canAnalyze(context, sender)) return;
         StringBuilder message = new StringBuilder();
         for (SmsMessage part : parts) {
             if (!sender.equals(part.getOriginatingAddress())) return;
@@ -28,6 +28,7 @@ public final class SmsReceiver extends BroadcastReceiver {
         }
         Data data = new Data.Builder().putString("sender", sender)
                 .putString("sms", message.toString())
+                .putLong("received_at_ms", parts[0].getTimestampMillis())
                 .putString("generation", settings.generation()).build();
         OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(SmsWorker.class)
                 .setInputData(data)
