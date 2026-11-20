@@ -29,6 +29,8 @@ public class HomeStopRepliesTest {
         SetupFlow.complete(app);
         settings.startMonitoring();
         device.getUiAutomation().grantRuntimePermission(app.getPackageName(), Manifest.permission.RECEIVE_SMS);
+        // Contacts must be readable before an automatic STOP can be enabled.
+        device.getUiAutomation().grantRuntimePermission(app.getPackageName(), Manifest.permission.READ_CONTACTS);
         device.getUiAutomation().grantRuntimePermission(app.getPackageName(), Manifest.permission.SEND_SMS);
         Activity home = device.startActivitySync(new Intent(app, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
