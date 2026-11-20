@@ -20,6 +20,7 @@ import net.openid.appauth.AuthorizationService;
 public final class SettingsActivity extends Activity {
     static final String EXTRA_SMS_ACCESS = "focus_sms_access";
     private static final int RECEIVE_SMS_REQUEST = 301;
+    private static final int CONTACTS_REQUEST = 304;
     private static final int ROUNDUP_PERMISSION_REQUEST = 303;
 
     private Settings settings;
@@ -224,10 +225,17 @@ public final class SettingsActivity extends Activity {
         UiKit.sectionHelp(this, smsPermissionCard, "SMS access", this::showSmsHelp)
                 .setId(R.id.sms_help);
         boolean allowed = SetupPermissions.hasIncoming(this);
+        boolean contactsAllowed = SetupPermissions.hasContacts(this);
         UiKit.description(this, smsPermissionCard, !allowed ? "Incoming SMS access needed"
-                : SetupPermissions.hasInbox(this) ? "Incoming SMS and MMS access allowed"
-                : "Incoming SMS allowed · MMS access needed");
-        if (allowed) {
+                : !contactsAllowed ? "Contacts access needed to exclude saved people"
+                : SetupPermissions.hasInbox(this) ? "Incoming SMS, MMS and contacts allowed"
+                : "Incoming SMS and contacts allowed · MMS access needed");
+        if (allowed && !contactsAllowed) {
+            UiKit.button(this, smsPermissionCard, "Allow contacts", true,
+                    () -> SetupPermissions.requestContacts(this, CONTACTS_REQUEST));
+            UiKit.link(this, smsPermissionCard, "Open Android permissions", () ->
+                    SetupPermissions.openAppSettings(this));
+        } else if (allowed) {
             UiKit.link(this, smsPermissionCard, "Open Android permissions", () ->
                     SetupPermissions.openAppSettings(this));
         } else if (smsPermissionStep.showAppSettings(false)) {
@@ -240,8 +248,10 @@ public final class SettingsActivity extends Activity {
     private void showSmsHelp() {
         if (SetupPermissions.hasIncoming(this)) {
             UiKit.info(this, "SMS and MMS access",
-                    "Monitoring reads incoming texts. Reading text from picture or group messages "
-                            + "also requires inbox access, which your Android installer may restrict.");
+                    "TextSentry checks contacts locally and skips saved people before AI "
+                            + "analysis or STOP. Contacts permission is required to monitor; "
+                            + "denying or revoking it stops filtering and replies. "
+                            + "Picture messages additionally require inbox access.");
         } else {
             SmsPermissionGuideUi.show(this, this::openSmsSettings);
         }
@@ -267,7 +277,9 @@ public final class SettingsActivity extends Activity {
                         + "Pausing monitoring also turns off automatic replies."));
         if (settings.autoSend()) {
             boolean allowed = SetupPermissions.hasOutgoing(this);
-            UiKit.description(this, replyCard, allowed ? "On" : "SMS reply access needed");
+            UiKit.description(this, replyCard,
+                    !SetupPermissions.hasContacts(this) ? "Contacts access needed"
+                            : allowed ? "On" : "SMS reply access needed");
             if (!allowed) {
                 UiKit.link(this, replyCard, "Restore reply access", this::confirmAutoSend);
             }
@@ -275,7 +287,8 @@ public final class SettingsActivity extends Activity {
                 settings.setAutomation(settings.monitoring(), false);
                 renderReplyCard();
             });
-        } else if (settings.monitoring() && SetupPermissions.hasIncoming(this)) {
+        } else if (settings.monitoring() && SetupPermissions.hasIncoming(this)
+                && SetupPermissions.hasContacts(this)) {
             UiKit.button(this, replyCard, "Enable auto-replies", false, this::confirmAutoSend);
         } else {
             UiKit.description(this, replyCard, "Off · Start monitoring to enable");
@@ -297,6 +310,9 @@ public final class SettingsActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == ROUNDUP_PERMISSION_REQUEST) {
             refreshRoundup();
+        } else if (requestCode == CONTACTS_REQUEST) {
+            renderSmsPermissionCard();
+            renderReplyCard();
         } else if (requestCode == RECEIVE_SMS_REQUEST) {
             smsPermissionStep.permissionRequested();
             renderSmsPermissionCard();
